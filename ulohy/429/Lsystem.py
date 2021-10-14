@@ -1,5 +1,9 @@
+#!/usr/bin/env python3
+
 import turtle
 import random
+from typing import Deque, Tuple
+from turtle import Vec2D
 """
 S - starting nonterminal
 f - forward terminal
@@ -10,6 +14,7 @@ lXXX - left turn by XXX angle where  0 <= XXX <= 180 (terminal)
 ] pop position terminal
 {A .. Z, +, - .. } / S nonterminal building symbols
 """
+
 
 class L_system:
     angle = 60  # 0 <= angle <= 180
@@ -22,18 +27,21 @@ class L_system:
     expansion_rules = {}  # dict, left side key, right side rewritten rule
     terminal_rules = {}
 
-    def __init__(self, distance, angle, expansion_rules, terminal_rules):
-        self.distance = distance
-        self.angle = angle
-        self.expansion_rules = expansion_rules
-        self.terminal_rules = terminal_rules
+    def __init__(self, distance: int,
+                 angle: float,
+                 expansion_rules: dict[str, str],
+                 terminal_rules: dict[str, str]):
+        self.distance: int = distance
+        self.angle: float = angle
+        self.expansion_rules: dict[str, str] = expansion_rules
+        self.terminal_rules: dict[str, str] = terminal_rules
         # get str angle
         strAngle = str(self.angle)
         if self.angle < 10:
             strAngle = "00" + strAngle
         elif self.angle < 100:
             strAngle = "0" + strAngle
-        self.strAngle = strAngle
+        self.strAngle: str = strAngle
 
     # helper so that I dont have to copy it into every test
     def add_basic_angles(self):
@@ -44,16 +52,35 @@ class L_system:
 class L_builder:
     axiom = "S"
 
-    def __init__(self, system):
-        self.__system = system
+    def __init__(self, system: "L_system"):
+        self.__system: "L_system" = system
 
     # do not change the head of the function
-    def build_system(self, iterations):
-        pass  # TODO
-
+    def build_system(self, iterations: int):
+        self.axiom: str = L_builder.axiom
+        for iter in range(iterations):
+            print(self.axiom)
+            # make an intermediate axiom representation
+            temp_axiom: str = ""
+            # check for the final iteration
+            for char in self.axiom:
+                for (key, value) in self.__system.expansion_rules.items():
+                    if char == key:
+                        temp_axiom += value
+            self.axiom = temp_axiom
+        temp_axiom = ""
+        for char in self.axiom:
+            for (key, value) in self.__system.terminal_rules.items():
+                # check each char against the terminal rules and build 
+                # a new axiom out of that
+                if char == key:
+                    temp_axiom += value
+        self.axiom = temp_axiom
+        
     def get_axiom(self):
+        print(self.axiom)
         return self.axiom
-
+    
 
 class L_drawer:
     # change speed for your animation but submit with speed 0
@@ -62,19 +89,42 @@ class L_drawer:
     def __init__(self, axiom, distance, startPos, startAngle):
         self.__axiom = axiom
         self.__distance = distance  # distance for turtle forward / backward
-        self.startPos = startPos  # initial angle
-        self.startAngle = startAngle  # initial position of turtle
+        self.startPos = startPos  # initial position of turtle
+        self.startAngle = startAngle  # initial angle
 
     # do not change the head of the function
     def draw_L_system(self):
         wn = turtle.Screen()
         pen = turtle.Turtle()
 
-        # TODO add code for starting position
+        turtle.setpos(self.startPos)
+        turtle.setheading(self.startAngle)
 
         turtle.tracer(0, 0)  # stop the drawing animation
 
-        # TODO add drawing code
+        for i, char in enumerate(self.__axiom):
+            if char == "f":
+                turtle.forward(self.__distance)
+            elif char == "b":
+                turtle.backward(self.__distance)
+            elif char == "[":
+                self.stack_push((turtle.position(), turtle.heading()))
+            elif char == "]":
+                pos = self.stack_pop()
+                turtle.setpos(pos[0])
+                turtle.setheading(pos[1])
+            elif char == "r":
+                angle = self.__axiom[i + 1: i + 4]
+                angle = [int(char) for char in angle]
+                angle = angle[0] * 100 + angle[1] * 10 + angle[2] * 1
+                turtle.right(angle) 
+            elif char == "l":
+                angle = self.__axiom[i + 1: i + 4]
+                angle = [int(char) for char in angle]
+                angle = angle[0] * 100 + angle[1] * 10 + angle[2] * 1
+                turtle.left(angle) 
+            else:
+                continue
 
         turtle.update()  # show the drawing
         # uncomment if you want to see the drawing
@@ -82,6 +132,16 @@ class L_drawer:
         # wn.mainloop()
         pen.clear()  # clear previous drawing from canvas [for automated tests]
 
+    def init_stack(self):
+        from collections import deque
+        # create a Deque class for simple pushing and popping from the front
+        self.stack = deque([])
+
+    def stack_push(self, pos: Tuple[Vec2D, float]):
+        self.stack.appendleft(pos)
+
+    def stack_pop(self) -> Tuple[Vec2D, float]:
+        return self.stack.popleft()
 
 def test_line(depth):
     expansion_rules = {
@@ -398,8 +458,7 @@ def basic_tests():
     # L system tasks
     assert test_line(6) == """ffffffffffffffffffffffffffffffff"""
 
-    assert test_koch(3) == """fl045fr045r045fl045fl045fl045fr045r045fl045fr045r04
-    5fl045fr045r045fl045fl045fl045fr045r045fl045f"""
+    assert test_koch(3) == """fl045fr045r045fl045fl045fl045fr045r045fl045fr045r045fl045fr045r045fl045fl045fl045fr045r045fl045f"""
 
     assert test_sierpinsky_triangle(3) == """fl120fr120fr120fl120fl120ffr120fl1
     20fr120fr120fl120fr120ffl120fl120fr120fr120fl120fl120ffffl120ffff"""
@@ -448,5 +507,5 @@ if __name__ == "__main__":
     # test_barley_non_deterministic(2, 5)
     # test_harder_recursive(6)
     # test_harder_recursive(3)
-    # basic_tests()
+    basic_tests()
     pass
