@@ -58,16 +58,16 @@ class L_builder:
     # do not change the head of the function
     def build_system(self, iterations: int):
         self.axiom: str = L_builder.axiom
-        for iter in range(iterations):
-            print(self.axiom)
+        for _ in range(iterations):
+            # print(self.axiom)
             # make an intermediate axiom representation
             temp_axiom: str = ""
-            # check for the final iteration
             for char in self.axiom:
                 for (key, value) in self.__system.expansion_rules.items():
                     if char == key:
                         temp_axiom += value
             self.axiom = temp_axiom
+
         temp_axiom = ""
         for char in self.axiom:
             for (key, value) in self.__system.terminal_rules.items():
