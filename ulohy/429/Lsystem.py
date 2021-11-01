@@ -4,6 +4,7 @@ import turtle
 import random
 from typing import Deque, Tuple
 from turtle import Vec2D
+import re
 """
 S - starting nonterminal
 f - forward terminal
@@ -58,27 +59,32 @@ class L_builder:
     # do not change the head of the function
     def build_system(self, iterations: int):
         self.axiom: str = L_builder.axiom
-        for iter in range(iterations):
-            print(self.axiom)
+        for _ in range(iterations - 1):
             # make an intermediate axiom representation
-            temp_axiom: str = ""
+            temp_axiom: str = self.axiom
             # check for the final iteration
-            for char in self.axiom:
-                for (key, value) in self.__system.expansion_rules.items():
-                    if char == key:
-                        temp_axiom += value
+            # for char in self.axiom:
+            #     for (key, value) in self.__system.expansion_rules.items():
+            #         if char == key:
+            #             temp_axiom += value
+            # self.axiom = temp_axiom
+            # print(self.axiom)
+
+            for key, value in self.__system.expansion_rules.items():
+                if type(value) == "list":
+                    value = random.choice(value)
+                temp_axiom = temp_axiom.replace(key, value)
             self.axiom = temp_axiom
-        temp_axiom = ""
-        for char in self.axiom:
-            for (key, value) in self.__system.terminal_rules.items():
+            print(self.axiom)
+
+        temp_axiom: str = self.axiom
+        for (key, value) in self.__system.terminal_rules.items():
                 # check each char against the terminal rules and build 
                 # a new axiom out of that
-                if char == key:
-                    temp_axiom += value
+            temp_axiom = temp_axiom.replace(key, value)
         self.axiom = temp_axiom
         
     def get_axiom(self):
-        print(self.axiom)
         return self.axiom
     
 
@@ -460,8 +466,7 @@ def basic_tests():
 
     assert test_koch(3) == """fl045fr045r045fl045fl045fl045fr045r045fl045fr045r045fl045fr045r045fl045fl045fl045fr045r045fl045f"""
 
-    assert test_sierpinsky_triangle(3) == """fl120fr120fr120fl120fl120ffr120fl1
-    20fr120fr120fl120fr120ffl120fl120fr120fr120fl120fl120ffffl120ffff"""
+    assert test_sierpinsky_triangle(3) == """fl120fr120fr120fl120fl120ffr120fl120fr120fr120fl120fr120ffl120fl120fr120fr120fl120fl120ffffl120ffff"""
 
     assert test_barley_deterministic(3) == """ffl025[[fl025[[]r025]r025f[r025f]
     l025]r025fl025[[]r025]r025f[r025f]l025]r025ff[r025fffl025[[]r025]r025f[r025

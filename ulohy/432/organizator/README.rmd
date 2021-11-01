@@ -1,0 +1,27 @@
+---
+title: readme
+output: pdf_document
+---
+
+# about
+Simple contact manager written in python, using tkinter
+
+# features
+[x] tkinter
+[x] json
+[ ] vcard
+[x] show saved
+[x] edit saved
+[x] add new
+[x] delete old
+[x] sort a-z, z-a
+[x] show only some columns
+[x] check phone number, mail and bday
+[x] startup(load) notification
+[x] contact search
+
+# architecture
+3 classes:
+- contatcs - ease of use and parsing
+- gui - tkinter graphical frontend
+- organizator - database and contact manipulation backend

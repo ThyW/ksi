@@ -1,0 +1,26 @@
+{
+    "Jozko Mrkvicka" : {
+    "email" : "dvere@dvere.dvere",
+    "phone_number" : "+111 111 1111",
+    "birthday" : "1.1.1970",
+    "note" : "a good friend of mine"
+    },
+    "Jozko" : {
+    "email" : "dvere@dvere.dvere",
+    "phone_number" : "+111 111 1111",
+    "birthday" : "1.1.1970",
+    "note" : "a good friend of mine"
+    },
+    "Mrkvicka" : {
+    "email" : "dvere@dvere.dvere",
+    "phone_number" : "+111 111 1111",
+    "birthday" : "1.1.1970",
+    "note" : "a good friend of mine"
+    },
+    "kvicka" : {
+    "email" : "dvere@dvere.dvere",
+    "phone_number" : "+111 111 1111",
+    "birthday" : "31.10.2021",
+    "note" : "a good friend of mine"
+    }
+}
