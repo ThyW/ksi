@@ -78,10 +78,22 @@ class L_builder:
             print(self.axiom)
 
         temp_axiom: str = self.axiom
-        for (key, value) in self.__system.terminal_rules.items():
+        for _ in range(iterations):
+            # print(self.axiom)
+            # make an intermediate axiom representation
+            temp_axiom: str = ""
+            for char in self.axiom:
+                for (key, value) in self.__system.expansion_rules.items():
+                    if char == key:
+                        temp_axiom += value
+            self.axiom = temp_axiom
+
+        temp_axiom = ""
+        for char in self.axiom:
+            for (key, value) in self.__system.terminal_rules.items():
                 # check each char against the terminal rules and build 
                 # a new axiom out of that
-            temp_axiom = temp_axiom.replace(key, value)
+                temp_axiom = temp_axiom.replace(key, value)
         self.axiom = temp_axiom
         
     def get_axiom(self):
