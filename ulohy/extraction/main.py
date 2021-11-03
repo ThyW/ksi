@@ -7,6 +7,7 @@ import requests
 
 import os
 import bs4
+from urllib.parse import urlparse
 
 class FullScrap(NamedTuple):
     # TUTO TRIDU ROZHODNE NEMEN
@@ -111,6 +112,7 @@ class Cache:
     """
     def __init__(self, base_url: str, output_path: str) -> None:
         self.base_url = base_url
+        self.base_url_parsed = urlparse(base_url)
         self.output_path = output_path
         self.output: Dict[str, requests.Response] = {}
 
@@ -140,6 +142,7 @@ class Cache:
         initial_a_tags = soup.find_all("a")
 
         # TODO: rework required
+        # MAJOR REWORK REQUIRED
         for elem in initial_a_tags:
             link = elem.get("href")
             if link.startswith("https://") or link.startswith("#") \
@@ -152,6 +155,8 @@ class Cache:
             if current.startswith("../"):
                 current = current.lstrip("../")
             current = self.base_url + current
+            parsed_url = urlparse(current)
+            current = self.base_url + parsed_url.path[1:]
             response = download_webpage(current)
             if response.__str__() != "<Response [200]>":
                 errored_urls.append(current)
@@ -161,8 +166,12 @@ class Cache:
             tags = soup.find_all("a")
             for each in tags:
                 new_url = each.get("href")
-                if new_url.startswith("https://") or new_url.startswith("#") \
-                    or (self.base_url + new_url) in visited_urls:
+                new_parsed = urlparse(self.base_url + new_url)
+                print(new_parsed.path)
+                new_url = self.base_url + new_parsed.path[1:]
+                new_parsed = urlparse(new_url)
+                if new_parsed.netloc != self.base_url_parsed.netloc \
+                    or new_url in visited_urls or new_url in url_stack:
                     continue
                 url_stack.append(new_url)
             self.output[current] = response
@@ -185,6 +194,9 @@ def main() -> None:
     # === testing ===
     cache = Cache(URL, "./output/") 
     cache.recursively_download_webpage()
+    # url = "https://python.iamroot.eu/library/code.html#module-code"
+    # parser = urlparse(url)
+    # print(parser)
 
 
 if __name__ == '__main__':
