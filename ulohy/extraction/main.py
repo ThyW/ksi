@@ -7,7 +7,7 @@ import requests
 
 import os
 import bs4
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 class FullScrap(NamedTuple):
     # TUTO TRIDU ROZHODNE NEMEN
@@ -122,6 +122,11 @@ class Cache:
         :return: boolean
         """
         return os.path.exists(self.output_path)
+    
+    def valid_url(self, url: str) -> bool:
+        parsed_url = urlparse(url)
+        return bool(parsed_url.netloc) and bool(parsed_url.scheme)
+        
 
     def recursively_download_webpage(self) -> None:
         """
@@ -141,43 +146,58 @@ class Cache:
         url_stack = []
         initial_a_tags = soup.find_all("a")
 
-        # TODO: rework required
-        # MAJOR REWORK REQUIRED
         for elem in initial_a_tags:
             link = elem.get("href")
             if link.startswith("https://") or link.startswith("#") \
                 or link in self.output.keys():
                 continue
-            url_stack.append(link)
 
+            # this is correct because we checked :)
+            normalised_link = self.base_url + link
+            url_stack.append(normalised_link)
+
+        # go through all the urls, checking the current one, downloading it and
+        # looking for all the links within it, adding them to the list of urls
+        # to visit
         while url_stack:
             current = url_stack.pop(0)
-            if current.startswith("../"):
-                current = current.lstrip("../")
-            current = self.base_url + current
-            parsed_url = urlparse(current)
-            current = self.base_url + parsed_url.path[1:]
-            response = download_webpage(current)
-            if response.__str__() != "<Response [200]>":
+            domain = urlparse(current).netloc
+
+            request = download_webpage(current)
+
+            if "[200]" not in str(request):
                 errored_urls.append(current)
-                print("bad response")
                 continue
-            soup = bs4.BeautifulSoup(response.text, "html.parser")
+            soup = bs4.BeautifulSoup(request.text, "html.parser")
             tags = soup.find_all("a")
             for each in tags:
                 new_url = each.get("href")
-                new_parsed = urlparse(self.base_url + new_url)
-                print(new_parsed.path)
-                new_url = self.base_url + new_parsed.path[1:]
-                new_parsed = urlparse(new_url)
-                if new_parsed.netloc != self.base_url_parsed.netloc \
-                    or new_url in visited_urls or new_url in url_stack:
+                if new_url == "" or new_url is None:
                     continue
-                url_stack.append(new_url)
-            self.output[current] = response
+                new_url = urljoin(current, new_url)
+                parsed_url = urlparse(new_url)
+                new_url = parsed_url.scheme + "://" + parsed_url.netloc + parsed_url.path
+                if not self.valid_url(new_url):
+                    continue
+                if new_url in visited_urls:
+                    continue
+                if domain not in new_url:
+                    continue
+                if new_url in visited_urls or new_url in errored_urls \
+                        or new_url in url_stack:
+                            continue
+                else:
+                    url_stack.append(new_url)
+            self.output[current] = request 
             visited_urls.append(current)
     
-        print(len(self.output))
+        print(f"output len: {len(self.output)}")
+    
+    def save(self) -> None:
+        with open(self.output_path, "w") as file:
+            lines = "\n".join(self.output.keys())
+            file.writelines(lines)
+            file.close()
 
 def main() -> None:
     """
@@ -192,8 +212,9 @@ def main() -> None:
     print(json.dumps(scrap_all(URL).as_dict()))
     print('took', int(time.time() - time_start), 's')
     # === testing ===
-    cache = Cache(URL, "./output/") 
+    cache = Cache(URL, "output") 
     cache.recursively_download_webpage()
+    cache.save()
     # url = "https://python.iamroot.eu/library/code.html#module-code"
     # parser = urlparse(url)
     # print(parser)
