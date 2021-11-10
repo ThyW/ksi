@@ -38,15 +38,24 @@ def download_webpage(url: str, *args, **kwargs) -> requests.Response:
     return requests.get(url, *args, **kwargs)
 
 
-def get_linux_only_availability(base_url: str) -> List[str]:
+def get_linux_only_availability(base_url: str, cache: "Cache") -> List[str]:
     """
     Finds all functions that area available only on Linux systems
     :param base_url: base url of the website
     :return: all function names that area available only on Linux systems
     """
-    # Tuto funkci implementuj
-    pass
+    ret = list()
+    for each_url, response in cache.output.items():
+        if "/library/" in each_url:
+            soup = bs4.BeautifulSoup(response.text, "html.parser")
+            matches = soup.find_all("dl", id = "function")
+            for match in matches:
+                contents = match.contents
+                if "Linux" in contents:
+                    pass
+                # TODO
 
+    return ret
 
 def get_most_visited_webpage(base_url: str) -> Tuple[int, str]:
     """
