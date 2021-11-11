@@ -9,6 +9,7 @@ import os
 import bs4
 from urllib.parse import urlparse, urljoin
 
+
 class FullScrap(NamedTuple):
     # TUTO TRIDU ROZHODNE NEMEN
     linux_only_availability: List[str]
@@ -38,7 +39,7 @@ def download_webpage(url: str, *args, **kwargs) -> requests.Response:
     return requests.get(url, *args, **kwargs)
 
 
-def get_linux_only_availability(base_url: str, cache: "Cache") -> List[str]:
+def get_linux_only_availability(cache: "Cache") -> List[str]:
     """
     Finds all functions that area available only on Linux systems
     :param base_url: base url of the website
@@ -48,12 +49,14 @@ def get_linux_only_availability(base_url: str, cache: "Cache") -> List[str]:
     for each_url, response in cache.output.items():
         if "/library/" in each_url:
             soup = bs4.BeautifulSoup(response.text, "html.parser")
-            matches = soup.find_all("dl", id = "function")
+            matches = soup.find_all("dl", class_="function")
             for match in matches:
-                contents = match.contents
-                if "Linux" in contents:
-                    pass
-                # TODO
+                function_id = match.find("dt")
+                print(function_id.find("id"))
+            # for match in matches:
+            #     second_soup = bs4.BeautifulSoup(match.contents, "html.parser")
+            #     availability = second_soup.find("p", class_="availability")
+            #     print(availability.contents)
 
     return ret
 
@@ -71,7 +74,8 @@ def get_changes(base_url: str) -> List[Tuple[int, str]]:
     """
     Locates all counts of changes of functions and groups them by version
     :param base_url: base url of the website
-    :return: all counts of changes of functions and groups them by version, sorted from the most changes DESC
+    :return: all counts of changes of functions and groups them by version,
+     sorted from the most changes DESC
     """
     # Tuto funkci implementuj
     pass
@@ -81,7 +85,8 @@ def get_most_params(base_url: str) -> List[Tuple[int, str]]:
     """
     Finds the function that accepts more than 10 parameters
     :param base_url: base url of the website
-    :return: number of parameters of this function and its name, sorted by the count DESC
+    :return: number of parameters of this function and its name,
+     sorted by the count DESC
     """
     # Tuto funkci implementuj
     pass
@@ -117,7 +122,7 @@ def scrap_all(base_url: str) -> FullScrap:
 # === custom funcitons begin here ===
 class Cache:
     """
-    A cache object which saves 
+    A cache object which saves
     """
     def __init__(self, base_url: str, output_path: str) -> None:
         self.base_url = base_url
@@ -131,11 +136,10 @@ class Cache:
         :return: boolean
         """
         return os.path.exists(self.output_path)
-    
+
     def valid_url(self, url: str) -> bool:
         parsed_url = urlparse(url)
         return bool(parsed_url.netloc) and bool(parsed_url.scheme)
-        
 
     def recursively_download_webpage(self) -> None:
         """
@@ -158,7 +162,7 @@ class Cache:
         for elem in initial_a_tags:
             link = elem.get("href")
             if link.startswith("https://") or link.startswith("#") \
-                or link in self.output.keys():
+               or link in self.output.keys():
                 continue
 
             # this is correct because we checked :)
@@ -185,7 +189,8 @@ class Cache:
                     continue
                 new_url = urljoin(current, new_url)
                 parsed_url = urlparse(new_url)
-                new_url = parsed_url.scheme + "://" + parsed_url.netloc + parsed_url.path
+                new_url = parsed_url.scheme + "://" \
+                    + parsed_url.netloc + parsed_url.path
                 if not self.valid_url(new_url):
                     continue
                 if new_url in visited_urls:
@@ -193,20 +198,28 @@ class Cache:
                 if domain not in new_url:
                     continue
                 if new_url in visited_urls or new_url in errored_urls \
-                        or new_url in url_stack:
-                            continue
+                   or new_url in url_stack:
+                    continue
                 else:
                     url_stack.append(new_url)
-            self.output[current] = request 
+            self.output[current] = request
             visited_urls.append(current)
-    
+
         print(f"output len: {len(self.output)}")
-    
+
+    # save all found urls to file
     def save(self) -> None:
         with open(self.output_path, "w") as file:
             lines = "\n".join(self.output.keys())
             file.writelines(lines)
             file.close()
+
+    # load a all urls from a file
+    def load_file(self, path: str) -> None:
+        with open(path, "r") as save_file:
+            for line in save_file.read().splitlines():
+                self.output[line] = download_webpage(line)
+
 
 def main() -> None:
     """
@@ -214,19 +227,17 @@ def main() -> None:
     :return:
     """
     # Tuto funkci klidne muzes zmenit podle svych preferenci :)
-    import json
+    # import json
 
     URL = "https://python.iamroot.eu/"
-    time_start = time.time()
-    print(json.dumps(scrap_all(URL).as_dict()))
-    print('took', int(time.time() - time_start), 's')
+    # time_start = time.time()
+    # print(json.dumps(scrap_all(URL).as_dict()))
+    # print('took', int(time.time() - time_start), 's')
     # === testing ===
-    cache = Cache(URL, "output") 
-    cache.recursively_download_webpage()
-    cache.save()
-    # url = "https://python.iamroot.eu/library/code.html#module-code"
-    # parser = urlparse(url)
-    # print(parser)
+    cache = Cache(URL, "output")
+    cache.load_file("output")
+    get_linux_only_availability(cache)
+
 
 
 if __name__ == '__main__':
