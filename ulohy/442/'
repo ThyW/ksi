@@ -48,42 +48,22 @@ def main3() -> None:
             parsed = parsed.replace(b"\x1b[", b"")
             parsed = parsed.replace(b"*", b"")
             if not len(parsed) > 5 and not len(parsed) == 0:
-                # print(f"{parsed}: {len(parsed)}")
+                print(f"{parsed}: {len(parsed)}")
                 count += 1
                 buffer.append(parsed)
             data = soc.recv(1024)
 
-        output = ["*"] * len(buffer)
-        cursor = len(output) - 1
+        output = "*" * len(buffer)
+        cursor = len(output)
         for each in buffer:
-            f = str(each)
             l = len(each) 
             i = 0
-            num = None
-            method = 0
-            char = ""
+            num = ""
+            method = ""
             while i < l:
-                if f[i].isdigit():
-                    if not num:
-                        num = f[i]
-                    else:
-                        num += f[i] 
-                
-                if f[i] == b"D":
-                    method = -1
-                if f[i] == b"C":
-                    method = 1
-                else:
-                    char = chr(each[i])
-                i += 1
-            if num:
-                cursor += ((int(num) * method))
-            else:
-                cursor += 1
-            print(f"{f} {num} {method} {char}")
-            print(cursor)
-            output[cursor] = char
-            cursor += 1
-        print(output)
+                if chr(each[i]).isdigit():
+                    num.join(chr(each[i])) 
+                if chr(each[i]).isupper()
+                        method = "D"
 
 main3()
