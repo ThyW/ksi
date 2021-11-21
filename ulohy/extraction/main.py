@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import time
 from typing import NamedTuple, Optional, Dict, Tuple, List, Any
 
 import requests
@@ -8,6 +7,7 @@ import requests
 import os
 import bs4
 from urllib.parse import urlparse, urljoin
+import pickle
 
 
 class FullScrap(NamedTuple):
@@ -35,7 +35,7 @@ def download_webpage(url: str, *args, **kwargs) -> requests.Response:
     :return: requests Response
     """
     # TUTO FUNKCI ROZHODNE NEMEN
-    print('GET ', url)
+    # print('GET ', url)
     return requests.get(url, *args, **kwargs)
 
 
@@ -46,31 +46,45 @@ def get_linux_only_availability(cache: "Cache") -> List[str]:
     :return: all function names that area available only on Linux systems
     """
     ret = list()
-    for each_url, response in cache.output.items():
-        if "/library/" in each_url:
-            soup = bs4.BeautifulSoup(response.text, "html.parser")
-            matches = soup.find_all("dl", class_="function")
-            for match in matches:
-                function_id = match.find("dt")
-                print(function_id.find("id"))
-            # for match in matches:
-            #     second_soup = bs4.BeautifulSoup(match.contents, "html.parser")
-            #     availability = second_soup.find("p", class_="availability")
-            #     print(availability.contents)
-
+    lines = ""
+    with open("linux_only_availablity_parsed", "w") as file:
+        for _, pair in cache.output.items():
+            soup = bs4.BeautifulSoup(pair.request.text, "html.parser")
+            fn_matches = soup.find_all("dl", class_="function")
+            for match in fn_matches:
+                dt = match.find("dt").get("id")
+                av_match = match.find("p", class_="availability")
+                if av_match and dt:
+                    # remove "Availability:"
+                    av_without = av_match.text.removeprefix("Availability: ")
+                    if ("Unix" or "Linux" in av_without) and\
+                        (("Windows" not in av_without)
+                         and ("Android" not in av_without) and ("SSL"
+                         not in av_without)):
+                        s = f"function_name: {dt} | av: {av_without}\n"
+                        lines = lines + s
+                        ret.append(dt)
+        file.writelines(lines)
+    file.close()
+    print(len(ret))
     return ret
 
-def get_most_visited_webpage(base_url: str) -> Tuple[int, str]:
+
+def get_most_visited_webpage(cache: "Cache") -> Tuple[int, str]:
     """
     Finds the page with most links to it
-    :param base_url: base url of the website
-    :return: number of anchors to this page and its URL
+    :cache data structure with cashed urls and responses
+    :return most visited url with the amount of time visited
     """
-    # Tuto funkci implementuj
-    pass
+    d = dict()
+    for url, x in cache.output.items():
+        d[x.nr] = url
+    m = max(d.keys())
+    ret = (m, d[m])
+    return ret
 
 
-def get_changes(base_url: str) -> List[Tuple[int, str]]:
+def get_changes(cache: "Cache") -> List[Tuple[int, str]]:
     """
     Locates all counts of changes of functions and groups them by version
     :param base_url: base url of the website
@@ -81,7 +95,7 @@ def get_changes(base_url: str) -> List[Tuple[int, str]]:
     pass
 
 
-def get_most_params(base_url: str) -> List[Tuple[int, str]]:
+def get_most_params(cache: "Cache") -> List[Tuple[int, str]]:
     """
     Finds the function that accepts more than 10 parameters
     :param base_url: base url of the website
@@ -92,14 +106,16 @@ def get_most_params(base_url: str) -> List[Tuple[int, str]]:
     pass
 
 
-def find_secret_tea_party(base_url: str) -> Optional[str]:
+def find_secret_tea_party(cache: "Cache") -> Optional[str]:
     """
     Locates a secret Tea party
     :param base_url: base url of the website
     :return: url at which the secret tea party can be found
     """
     # Tuto funkci implementuj
-    pass
+    for each in cache.errored:
+        if str(each[1]) == "<Response [418]>":
+            return each[1].text.removeprefix("Location: ")
 
 
 def scrap_all(base_url: str) -> FullScrap:
@@ -119,7 +135,16 @@ def scrap_all(base_url: str) -> FullScrap:
     return scrap
 
 
-# === custom funcitons begin here ===
+# === custom funcitons and classes begin here ===
+class Pair:
+    """
+    A pair of Request and number of times the URL was visited.
+    """
+    def __init__(self, request: requests.Response, nr=1) -> None:
+        self.request = request
+        self.nr = nr
+
+
 class Cache:
     """
     A cache object which saves
@@ -128,7 +153,8 @@ class Cache:
         self.base_url = base_url
         self.base_url_parsed = urlparse(base_url)
         self.output_path = output_path
-        self.output: Dict[str, requests.Response] = {}
+        self.output: Dict[str, Pair] = {}
+        self.errored: List[Tuple[str, requests.Response]] = list()
 
     def check_downloaded(self) -> bool:
         """
@@ -179,7 +205,7 @@ class Cache:
             request = download_webpage(current)
 
             if "[200]" not in str(request):
-                errored_urls.append(current)
+                errored_urls.append((current, request))
                 continue
             soup = bs4.BeautifulSoup(request.text, "html.parser")
             tags = soup.find_all("a")
@@ -193,8 +219,8 @@ class Cache:
                     + parsed_url.netloc + parsed_url.path
                 if not self.valid_url(new_url):
                     continue
-                if new_url in visited_urls:
-                    continue
+                if new_url in visited_urls and new_url != current:
+                    self.output[new_url].nr += 1
                 if domain not in new_url:
                     continue
                 if new_url in visited_urls or new_url in errored_urls \
@@ -202,15 +228,19 @@ class Cache:
                     continue
                 else:
                     url_stack.append(new_url)
-            self.output[current] = request
+            self.output[current] = Pair(current)
             visited_urls.append(current)
 
+        self.errored = errored_urls
         print(f"output len: {len(self.output)}")
 
     # save all found urls to file
     def save(self) -> None:
         with open(self.output_path, "w") as file:
-            lines = "\n".join(self.output.keys())
+            iter = [(x, str(y.nr)) for x, y in self.output.items()]
+            lines = ""
+            for each in iter:
+                lines = lines + f"{each[0]};{each[1]}\n"
             file.writelines(lines)
             file.close()
 
@@ -218,7 +248,21 @@ class Cache:
     def load_file(self, path: str) -> None:
         with open(path, "r") as save_file:
             for line in save_file.read().splitlines():
-                self.output[line] = download_webpage(line)
+                sp = line.split(";")
+                self.output[sp[0]] = Pair(download_webpage(sp[0]), nr=sp[1])
+
+    def save_pickle(self, file: str):
+        with open(file, "wb") as f:
+            pickle.dump(self, f)
+        f.close()
+
+    @classmethod
+    def load_pickle(cls, file: str) -> "Cache":
+        with open(file, "rb") as f:
+            c = Cache("a", "b")
+            c = pickle.load(f)
+        f.close()
+        return c
 
 
 def main() -> None:
@@ -233,11 +277,16 @@ def main() -> None:
     # time_start = time.time()
     # print(json.dumps(scrap_all(URL).as_dict()))
     # print('took', int(time.time() - time_start), 's')
+
     # === testing ===
     cache = Cache(URL, "output")
-    cache.load_file("output")
-    get_linux_only_availability(cache)
+    cache = Cache.load_pickle("cache.obj")
 
+    # get_linux_only_availability(cache) WORKS
+    # get_most_visited_webpage(cache) WORKS
+    find_secret_tea_party(cache)
+    # get_changes(cache) TODO
+    # get_most_params(cache) TODO
 
 
 if __name__ == '__main__':

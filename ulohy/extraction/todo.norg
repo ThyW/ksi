@@ -1,0 +1,13 @@
+@document.meta
+        title: todo
+        description: a  todo list for this project
+        author: zir
+        categories: development
+        created: 2021-11-21
+        version: 0.1
+@end
+
+* TODO
+  - find tea pot, modify cache to not filter out bad requests
+  - find all linux and unix functions
+  - 
