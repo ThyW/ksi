@@ -35,7 +35,7 @@ def download_webpage(url: str, *args, **kwargs) -> requests.Response:
     :return: requests Response
     """
     # TUTO FUNKCI ROZHODNE NEMEN
-    # print('GET ', url)
+    print('GET ', url)
     return requests.get(url, *args, **kwargs)
 
 
@@ -66,7 +66,6 @@ def get_linux_only_availability(cache: "Cache") -> List[str]:
                         ret.append(dt)
         file.writelines(lines)
     file.close()
-    print(len(ret))
     return ret
 
 
@@ -76,12 +75,12 @@ def get_most_visited_webpage(cache: "Cache") -> Tuple[int, str]:
     :cache data structure with cashed urls and responses
     :return most visited url with the amount of time visited
     """
-    d = dict()
-    for url, x in cache.output.items():
-        d[x.nr] = url
-    m = max(d.keys())
-    ret = (m, d[m])
-    return ret
+    m = max(cache.url_count.values())
+    r = ""
+    for url, value in cache.url_count.items():
+        if value == m:
+            r = url
+    return (m, r)
 
 
 def get_changes(cache: "Cache") -> List[Tuple[int, str]]:
@@ -136,15 +135,6 @@ def scrap_all(base_url: str) -> FullScrap:
 
 
 # === custom funcitons and classes begin here ===
-class Pair:
-    """
-    A pair of Request and number of times the URL was visited.
-    """
-    def __init__(self, request: requests.Response, nr=1) -> None:
-        self.request = request
-        self.nr = nr
-
-
 class Cache:
     """
     A cache object which saves
@@ -153,8 +143,9 @@ class Cache:
         self.base_url = base_url
         self.base_url_parsed = urlparse(base_url)
         self.output_path = output_path
-        self.output: Dict[str, Pair] = {}
+        self.output: Dict[str, requests.Response] = {}
         self.errored: List[Tuple[str, requests.Response]] = list()
+        self.url_count: Dict[str, int] = {}
 
     def check_downloaded(self) -> bool:
         """
@@ -200,6 +191,10 @@ class Cache:
         # to visit
         while url_stack:
             current = url_stack.pop(0)
+            if self.url_count.get(current) is None:
+                self.url_count[current] = 1
+            else:
+                self.url_count[current] += 1
             domain = urlparse(current).netloc
 
             request = download_webpage(current)
@@ -219,16 +214,22 @@ class Cache:
                     + parsed_url.netloc + parsed_url.path
                 if not self.valid_url(new_url):
                     continue
-                if new_url in visited_urls and new_url != current:
-                    self.output[new_url].nr += 1
+                if new_url in visited_urls: 
+                    continue
                 if domain not in new_url:
                     continue
+                if (new_url in visited_urls or new_url in errored_urls \
+                   or new_url in url_stack) and new_url != current:
+                    if self.url_count.get(new_url) is None:
+                        self.url_count[new_url] = 1
+                    else:
+                        self.url_count[new_url] += 1
                 if new_url in visited_urls or new_url in errored_urls \
                    or new_url in url_stack:
                     continue
                 else:
                     url_stack.append(new_url)
-            self.output[current] = Pair(current)
+            self.output[current] = request
             visited_urls.append(current)
 
         self.errored = errored_urls
@@ -237,10 +238,7 @@ class Cache:
     # save all found urls to file
     def save(self) -> None:
         with open(self.output_path, "w") as file:
-            iter = [(x, str(y.nr)) for x, y in self.output.items()]
-            lines = ""
-            for each in iter:
-                lines = lines + f"{each[0]};{each[1]}\n"
+            lines = "\n".join(self.output.keys())
             file.writelines(lines)
             file.close()
 
@@ -259,8 +257,7 @@ class Cache:
     @classmethod
     def load_pickle(cls, file: str) -> "Cache":
         with open(file, "rb") as f:
-            c = Cache("a", "b")
-            c = pickle.load(f)
+            c: Cache = pickle.load(f)
         f.close()
         return c
 
@@ -279,12 +276,15 @@ def main() -> None:
     # print('took', int(time.time() - time_start), 's')
 
     # === testing ===
-    cache = Cache(URL, "output")
-    cache = Cache.load_pickle("cache.obj")
+    # cache = Cache(URL, "output")
+    # cache.recursively_download_webpage()
+    # cache.save()
+    # cache.save_pickle("cache.obj")
+    cache =  Cache.load_pickle("cache.obj")
 
-    # get_linux_only_availability(cache) WORKS
-    # get_most_visited_webpage(cache) WORKS
-    find_secret_tea_party(cache)
+    # get_linux_only_availability(cache)  # WORKS
+    print(get_most_visited_webpage(cache))  # WORKS
+    # find_secret_tea_party(cache)
     # get_changes(cache) TODO
     # get_most_params(cache) TODO
 

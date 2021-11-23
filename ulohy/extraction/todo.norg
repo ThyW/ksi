@@ -7,7 +7,8 @@
         version: 0.1
 @end
 
-* TODO
-  - find tea pot, modify cache to not filter out bad requests
-  - find all linux and unix functions
-  - 
+* TODO list
+  - [ ] finish function with most parameters
+  - [ ] finish changes introduced in each version
+  - [x] find tea pot, modify cache to not filter out bad requests
+  - [x] pickle *parsing* cache object
