@@ -12,3 +12,4 @@
   - [ ] finish changes introduced in each version
   - [x] find tea pot, modify cache to not filter out bad requests
   - [x] pickle *parsing* cache object
+  - [ ] check if there are also removed items in /get_changes()/

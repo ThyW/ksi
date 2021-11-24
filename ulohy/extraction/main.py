@@ -48,8 +48,8 @@ def get_linux_only_availability(cache: "Cache") -> List[str]:
     ret = list()
     lines = ""
     with open("linux_only_availablity_parsed", "w") as file:
-        for _, pair in cache.output.items():
-            soup = bs4.BeautifulSoup(pair.request.text, "html.parser")
+        for _, response in cache.output.items():
+            soup = bs4.BeautifulSoup(response.text, "html.parser")
             fn_matches = soup.find_all("dl", class_="function")
             for match in fn_matches:
                 dt = match.find("dt").get("id")
@@ -91,7 +91,53 @@ def get_changes(cache: "Cache") -> List[Tuple[int, str]]:
      sorted from the most changes DESC
     """
     # Tuto funkci implementuj
-    pass
+    changes: Dict[str, int] = dict()
+    for _, response in cache.output.items():
+        soup = bs4.BeautifulSoup(response.text, "html.parser")
+        version_added = soup.find_all("div", class_="versionadded")
+        version_changed = soup.find_all("div", class_="versionchanged")
+
+        # handle version added
+        for each_added in version_added:
+            found = each_added.find("span", class_="versionmodified added")
+            if not found is None:
+                # print(f"added: {found.text}")
+                parsed = found.text.removeprefix("New in version ")
+                if ":" in parsed:
+                    parsed = parsed.removesuffix(": ")
+                split = parsed.split(".")
+                split = split[0] + "." + split[1]
+                if split[0] != "3":
+                    continue
+                else:
+                    if changes.get(split) is not None:
+                        changes[split] += 1
+                    else:
+                        changes[split] = 1
+
+        for each_changed in version_changed:
+            found = each_changed.find_all("span", class_="versionmodified changed")
+            for each in found:
+                # print(f"changed: {each.text}")
+                parsed = each.text.removeprefix("Changed in version ")
+                if ":" in parsed:
+                    parsed = parsed.removesuffix(": ")
+                split = parsed.split(".")
+                split = split[0] + "." + split[1]
+                if split[0] != "3":
+                    continue
+                else:
+                    if changes.get(split) is not None:
+                        changes[split] += 1
+                    else:
+                        changes[split] = 1
+
+    l = list()
+    s = sorted(changes.items(), key=lambda x: x[1])
+    s = dict(s)
+    for each in s.items():
+        l.append((each[1], each[0]))
+    return l[::-1]
 
 
 def get_most_params(cache: "Cache") -> List[Tuple[int, str]]:
@@ -102,7 +148,18 @@ def get_most_params(cache: "Cache") -> List[Tuple[int, str]]:
      sorted by the count DESC
     """
     # Tuto funkci implementuj
-    pass
+    l: List[Tuple[int, str]] = list()
+
+    for response in cache.output.values():
+        soup = bs4.BeautifulSoup(response.text, "html.parser")
+        functions = soup.find_all("dl", class_="function")
+        for function in functions:
+            dt = function.find("dt")
+            name = dt.get("id")
+            params = dt.find_all("em", class_="sig-param")
+            if len(params) > 10:
+                l.append((len(params), name))
+    return list(sorted(l, key=lambda x: x[0]))[::-1]
 
 
 def find_secret_tea_party(cache: "Cache") -> Optional[str]:
@@ -117,7 +174,7 @@ def find_secret_tea_party(cache: "Cache") -> Optional[str]:
             return each[1].text.removeprefix("Location: ")
 
 
-def scrap_all(base_url: str) -> FullScrap:
+def scrap_all(cache: "Cache") -> FullScrap:
     """
     Scrap all the information as efficiently as we can
     :param base_url: base url of the website
@@ -125,11 +182,11 @@ def scrap_all(base_url: str) -> FullScrap:
     """
     # Tuto funkci muzes menit, ale musi vracet vzdy tyto data
     scrap = FullScrap(
-        linux_only_availability=get_linux_only_availability(base_url),
-        most_visited_webpage=get_most_visited_webpage(base_url),
-        changes=get_changes(base_url),
-        params=get_most_params(base_url),
-        tea_party=find_secret_tea_party(base_url)
+        linux_only_availability=get_linux_only_availability(cache),
+        most_visited_webpage=get_most_visited_webpage(cache),
+        changes=get_changes(cache),
+        params=get_most_params(cache),
+        tea_party=find_secret_tea_party(cache)
     )
     return scrap
 
@@ -268,25 +325,26 @@ def main() -> None:
     :return:
     """
     # Tuto funkci klidne muzes zmenit podle svych preferenci :)
-    # import json
-
-    URL = "https://python.iamroot.eu/"
-    # time_start = time.time()
-    # print(json.dumps(scrap_all(URL).as_dict()))
-    # print('took', int(time.time() - time_start), 's')
+    import json
+    import time
 
     # === testing ===
-    # cache = Cache(URL, "output")
-    # cache.recursively_download_webpage()
-    # cache.save()
-    # cache.save_pickle("cache.obj")
-    cache =  Cache.load_pickle("cache.obj")
+    URL = "https://python.iamroot.eu/"
+    cache = Cache(URL, "output")
+    cache.recursively_download_webpage()
+    cache.save()
+    cache.save_pickle("cache.obj")
+    # cache =  Cache.load_pickle("cache.obj")
 
     # get_linux_only_availability(cache)  # WORKS
-    print(get_most_visited_webpage(cache))  # WORKS
+    # print(get_most_visited_webpage(cache))  # WORKS
     # find_secret_tea_party(cache)
-    # get_changes(cache) TODO
-    # get_most_params(cache) TODO
+    # print(get_changes(cache))  # TODO
+    # print(get_most_params(cache))  # TODO
+
+    time_start = time.time()
+    print(json.dumps(scrap_all(cache).as_dict()))
+    print('took', int(time.time() - time_start), 's')
 
 
 if __name__ == '__main__':
