@@ -1,0 +1,25 @@
+@document.meta
+        title: spec
+        description: MTP protocol specification.
+        author: zir
+        categories: 
+        created: 2021-11-25
+        version: 0.1
+@end
+
+* Prerequisites
+  MTP is a TCP file file transfer protocol for transferring memes. A single `Meme` consists of the actual `image`, authors `nick` and `password`, a `NSFW` tag and a text with with the meme's `description`.
+
+ ** Communication
+    MTP communication is handle through two `channels`, the `Main` channel and the `Data` channel. It's also handled in 3 phases.
+  *** 1. Initialization phase
+      - Clients establishes TCP connection with the server with the following messsage: `C MTP V:1.0`.
+      - Server responds with: `S MTP V:1.0`.
+      - Client then chooses a `nick`, with which the clients wishes to be identified as and sends the following message: `C <nick>`.
+      - Server then generates a security `token` which is then sent back to the client: `S <token>`.
+      - Server creates opens the `Data` channel and sends the clients the following message: `S <port>` where port is the port to the open data channel(`IP` stays the same).
+  *** 2. Transfer phase
+      - Firstly, client establishes a TCP connection with the `Data` channel, seding the following message: `C <nick>`.
+      - Server then respons with: `S <token>` which has to be the same as the one sent in the first phase
+      - Then, server sends: `S REQ:<type>` TODO: finish this.
+
