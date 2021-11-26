@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import socket
-from typing import Any, Tuple, Optional, Union
+from typing import Any, Tuple, Optional, List
 import sys
 
 SERVER_IP = "159.89.4.84"
@@ -45,46 +45,24 @@ class Result:
     def is_err(self) -> bool:
         return self.err is not None
 
-    def unwrap(self) -> Any:
+    def unwrap(self) -> Optional[Any]:
         if self.is_ok():
             return self.ok
 
     def error(self) -> Optional[Error]:
         if self.is_err():
             return self.err
-        else:
-            return
-
-
-class ChannelError(Error):
-    """
-    All the errors that can happen when working with channels.
-    """
-    def __init__(self, kind: Any = None, data: Any = None ,msg: str = None) -> None:
-        super().__init__(kind, data=data, msg=msg)
-
-
-class ChannelResult(Result):
-    def __init__(self, ok: Any = None, err: ChannelError = None) -> None:
-        super().__init__(ok=ok, err=err)
-
-
-class MTPError(Error):
-    def __init__(self, kind: Any, kind_data: Any = None) -> None:
-        super().__init__(kind, kind_data)
-
-class MTPResult(Result):
-    """
-    Representation of either succes or failure when working with MTP.
-    """
-    def __init__(self, ok: Any = None, err: Error = None) -> None:
-        super().__init__(ok=ok, err=err)
 
 
 class MTP:
     """
     A class reponsible for MTP communication
-    :param ip - IP Address of the server we want to communicate with
+    :param nick - User's nick.
+    :param password - User's password.
+    :param ip - IP Address of the server we want to communicate with.
+    :param port - Port on which we want to communicate.
+    :param meme - filename pointing to the image which we want to send.
+    :param is_nsfw - Whether the meme should be marked as nsfw.
     """
     def __init__(self, nick: str, password: str, ip: str=SERVER_IP, port: int=PORT,  is_nsfw: bool = False, meme: str = None) -> None:
         self.ip: str = ip
@@ -92,9 +70,10 @@ class MTP:
         self.nick: str = nick
         self.password: str = password
         self.is_nsfw = is_nsfw
+        self.meme_name = meme
 
-    def run(self) -> MTPResult:
-        return MTPResult(ok=())
+    def run(self) -> Result:
+        return Result(ok=())
 
 
 class Channel:
@@ -103,40 +82,48 @@ class Channel:
         self.port = port
         self.connection: Optional[socket.socket]
 
-    def connect(self) -> ChannelResult:
+    def connect(self) -> Result:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if con := s.connect((self.ip, self.port)):
             self.connection = con
-            return ChannelResult(ok=())
+            return Result(ok=())
         else:
-            return ChannelResult(err=ChannelError("Connect"))
+            return Result(err=Error("Connect"))
 
     @classmethod
     def encode_data(cls, data: str) -> Tuple[int, bytes]:
         data_lenght = len(data)
-        data = f"{data_lenght}:{data}"
+        data = f"{data_lenght}:{data},"
         return (data_lenght, b'{data}')
 
     @classmethod
     def decode_data(cls, data: bytes) -> Tuple[int, str]:
         decoded = data.decode("utf-8")
-        return (len(decoded), decoded)
+        index = decoded.find(":")
+        data_length = int(decoded[0:index]) or len(decoded)
+        decoded_data = decoded[index:]  # this should get rid of the trailing comma
+        return (data_length, decoded_data)
 
-    def send(self, data: str) -> ChannelResult:
+    def send(self, data: str) -> Result:
         if self.connection:
             size, encoded_data = self.encode_data(data)
             self.connection.sendall(encoded_data)
-            return ChannelResult(ok=size)
+            return Result(ok=size)
         else:
-            return ChannelResult(err=ChannelError("Send"))
+            return Result(err=Error("Send"))
 
-    def recieve(self, amount: int) -> ChannelResult:
+    def recieve(self, recieve_data_size: int) -> Result:
+        buffer: List[str] = ["__init"]
+        entire_package_size: int = 0
         if self.connection:
-            buffer = self.connection.recv(amount)
-            size, decoded = self.decode_data(buffer)
-            return ChannelResult(ok=(size, decoded))
+            while buffer[-1][-1] != ",":
+                received_data = self.connection.recv(recieve_data_size)
+                size, decoded = self.decode_data(received_data)  # not sure if we need the size here, but we probably do
+                entire_package_size += size
+                buffer.append(decoded)
+            return Result(ok=buffer[1:])
         else:
-            return ChannelResult(err=ChannelError("Receive"))
+            return Result(err=Error("Receive"))
 
 
 class MainChannel(Channel):
@@ -145,6 +132,40 @@ class MainChannel(Channel):
     """
     def __init__(self, ip: str, port: int, ) -> None:
         super().__init__(ip, port)
+
+    def first_phase(self, nick: str, ) -> Result:
+        data_to_send: List["str"] = ["C MTP V:1.0", f"C {nick}"]
+        received_data: List["str"] = list()
+        
+        send_result = self.send(data_to_send[0])
+
+        if send_result.is_err():
+            return send_result
+
+        receive_result = self.recieve(1024)
+        if receive_result.is_err():
+            return receive_result
+
+        received_data.append(receive_result.unwrap()[1])
+        send_result = self.send(data_to_send[1])
+
+        if send_result.is_err():
+            return send_result
+
+        receive_result = self.recieve(1024)
+        if receive_result.is_err():
+            return receive_result
+
+        received_data.append(receive_result.unwrap()[1])
+
+        receive_result = self.recieve(1024)
+        if receive_result.is_err():
+            return receive_result
+
+        received_data.append(receive_result.unwrap()[1])
+
+        return Result(ok=(received_data[1], received_data[2]))
+
 
 
 class DataChannel(Channel):
@@ -169,9 +190,19 @@ if __name__ == "main":
 
 
 def test_result() -> None:
-    print(ChannelResult(ok=()).unwrap())
-    print(MTPResult(ok=()).unwrap())
-    print(MTPResult(err=MTPError("Channel", "Send")).unwrap().kind())
+    print(Result(ok=()).unwrap())
+    print(Result(err=Error(kind="Test", data="some data", msg="Error description.")).unwrap())
+    print(Result(err=Error("Channel", "Send")).error().kind())
+
+
+def own_test() -> None:
+    some = ["aaa", "bbbbb", "cccc,", "hihihi"]
+    buffer = ["start"]
+    while buffer[-1][-1] != ",":
+        buffer.append(some.pop(0))
+    assert buffer[1:] == ["aaa", "bbbbb", "cccc,"]
+
+    print("passed")
 
 
 def run_module_tests() -> None:
@@ -180,3 +211,4 @@ def run_module_tests() -> None:
 
 if "--test" in sys.argv:
     run_module_tests()
+    own_test()
