@@ -3,6 +3,7 @@
 import socket
 from typing import Any, Tuple, Optional, List
 import sys
+import base64
 
 SERVER_IP = "159.89.4.84"
 PORT = 42069
@@ -64,15 +65,38 @@ class MTP:
     :param meme - filename pointing to the image which we want to send.
     :param is_nsfw - Whether the meme should be marked as nsfw.
     """
-    def __init__(self, nick: str, password: str, ip: str=SERVER_IP, port: int=PORT,  is_nsfw: bool = False, meme: str = None) -> None:
+    def __init__(self, nick: str,
+                 password: str,
+                 ip: str=SERVER_IP,
+                 port: int=PORT,
+                 is_nsfw: bool=False,
+                 meme: str="meme.png",
+                 description: str="Default meme desc.") -> None:
         self.ip: str = ip
         self.port: int = port
         self.nick: str = nick
         self.password: str = password
         self.is_nsfw = is_nsfw
         self.meme_name = meme
+        self.description: str = description
 
     def run(self) -> Result:
+        main_channel = MainChannel(self.ip, self.port)
+        first_phase_result = main_channel.first_phase(self.nick)
+
+        if first_phase_result.is_err():
+            return first_phase_result
+
+        token, data_port = first_phase_result.unwrap()
+
+        data_channel = DataChannel(self.ip, data_port)
+        second_phase_result = data_channel.second_phase(self.nick,
+                                                        token,
+                                                        self.meme_name,
+                                                        self.description,
+                                                        self.is_nsfw,
+                                                        self.password)
+
         return Result(ok=())
 
 
@@ -167,13 +191,78 @@ class MainChannel(Channel):
         return Result(ok=(received_data[1], received_data[2]))
 
 
-
 class DataChannel(Channel):
     """
     A class responsible for handling the data channel and it's communication.
     """
     def __init__(self, ip: str, port: int) -> None:
         super().__init__(ip, port)
+
+    def second_phase(self, nick: str,
+                     token: str,
+                     meme_name: str,
+                     description: str,
+                     is_nsfw: bool,
+                     password: str) -> Result:
+        meme_img = ""
+        with open(meme_name, "rb") as f:
+            meme_img = base64.b64encode(f.read())
+
+        data_to_send = {
+                "nick": f"C {nick}",
+                "meme": f"C {meme_img}",
+                "description": f"C {description}",
+                "nsfw": f"C {str(is_nsfw).lower()}",
+                "password": f"C {password}"
+                }
+        received_data: List[str] = list()
+
+        initial_contact_result = self.send(data_to_send["nick"])
+        if initial_contact_result.is_err():
+            return initial_contact_result
+
+        receive_result = self.recieve(1024)
+        first = True
+        last_data_length = 0
+        dtoken = None
+
+        while receive_result:
+            if receive_result.is_err():
+                return receive_result
+            else:
+                if receive_result.unwrap() and first:
+                    _, data = receive_result.unwrap()
+                    if data:
+                        if data[1] != token:
+                            # TODO: self.send_error("tokens dont match!")
+                            pass
+                        received_data.append(data[1])
+                        first = False
+                if data := receive_result.unwrap()[1] == "S REQ:meme":
+                    res = self.send(data_to_send["meme"]))
+                    last_data_length = res[0]
+                if data := receive_result.unwrap()[1] == "S REQ:description":
+                    res = self.send(data_to_send["description"])
+                    last_data_length = res[0]
+                if data := receive_result.unwrap()[1] == "S REQ:nsfw":
+                    res = self.send(data_to_send["nsfw"])
+                    last_data_length = res[0]
+                if data := receive_result.unwrap()[1] == "S REQ:password":
+                    res = self.send(data_to_send["password"]).is_err()
+                    last_data_length = res[0]
+                if "S ACK:" in receive_result.unwrap()[1]:
+                    stripped = receive_result.unwrap()[1]
+                                .removeprefix("S ACK:")
+                    if int(stripped) != last_data_length:
+                        return Result(err=Error("DataChannel",
+                                                msg="Data lenght not same."))
+                if "S END:" in receive_result.unwrap()[1]:
+                    stripped = receive_result.unwrap()[1]\
+                               .removeprefix("S END:")
+                    dtoken = stripped
+                    break
+            print("All went well!")
+            return Result(ok=dtoken)
 
 
 def main() -> None:
