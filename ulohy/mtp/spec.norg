@@ -43,6 +43,7 @@
     - [ ] get the basic implementation up and running
 	- [ ] class MTP
 	- [ ] class Channel for handling communication
+	- REWRITE
  ** Graphical UI
     - [ ] create a graphical ui
  ** Documentation

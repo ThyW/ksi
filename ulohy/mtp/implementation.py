@@ -29,6 +29,9 @@ class Error:
         else:
             return None
 
+    def __str__(self) -> str:
+        return f"Error {{kind = {self.__kind}, data = {self.__data}, msg = {self.__msg}}}"
+
 
 # Why not become a little rust-y? ;)
 # https://doc.rust-lang.org/std/result/enum.Result.html
@@ -53,6 +56,9 @@ class Result:
     def error(self) -> Optional[Error]:
         if self.is_err():
             return self.err
+
+    def __str__(self) -> str:
+        return f"ok = {self.ok}, err = {self.err}"
 
 
 class MTP:
@@ -82,12 +88,16 @@ class MTP:
 
     def run(self) -> Result:
         main_channel = MainChannel(self.ip, self.port)
+        # sum of all the data sent by the client
+        sum = 0
+        print("here")
         first_phase_result = main_channel.first_phase(self.nick)
 
         if first_phase_result.is_err():
             return first_phase_result
 
-        token, data_port = first_phase_result.unwrap()
+        token, data_port, data_size = first_phase_result.unwrap()
+        sum += data_size
 
         data_channel = DataChannel(self.ip, data_port)
         second_phase_result = data_channel.second_phase(self.nick,
@@ -96,6 +106,19 @@ class MTP:
                                                         self.description,
                                                         self.is_nsfw,
                                                         self.password)
+        if second_phase_result.is_err():
+            return second_phase_result
+        
+        dtoken, data_size = second_phase_result.unwrap()
+        sum += data_size
+
+        last_phase_result = main_channel.last_phase(dtoken, data_sum)
+        
+        if last_phase_result.is_err():
+            return last_phase_result
+
+        print("All three phases went, without an error!")
+        print("Signing out...")
 
         return Result(ok=())
 
@@ -108,11 +131,9 @@ class Channel:
 
     def connect(self) -> Result:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if con := s.connect((self.ip, self.port)):
-            self.connection = con
-            return Result(ok=())
-        else:
-            return Result(err=Error("Connect"))
+        s.connect((self.ip, self.port))
+        self.connection = s
+        return Result(ok=self.connection)
 
     @classmethod
     def encode_data(cls, data: str) -> Tuple[int, bytes]:
@@ -124,7 +145,7 @@ class Channel:
     def decode_data(cls, data: bytes) -> Tuple[int, str]:
         decoded = data.decode("utf-8")
         index = decoded.find(":")
-        data_length = int(decoded[0:index]) or len(decoded)
+        data_length = len(decoded)
         decoded_data = decoded[index:]  # this should get rid of the trailing comma
         return (data_length, decoded_data)
 
@@ -134,20 +155,24 @@ class Channel:
             self.connection.sendall(encoded_data)
             return Result(ok=size)
         else:
-            return Result(err=Error("Send"))
+            return Result(err=Error("Send", msg="There is no connection."))
 
     def recieve(self, recieve_data_size: int) -> Result:
         buffer: List[str] = ["__init"]
+        print(buffer)
         entire_package_size: int = 0
         if self.connection:
-            while buffer[-1][-1] != ",":
+            while buffer[-1]:
+                print(buffer)
                 received_data = self.connection.recv(recieve_data_size)
                 size, decoded = self.decode_data(received_data)  # not sure if we need the size here, but we probably do
+                if decoded != "":
+                    print(decoded)
                 entire_package_size += size
                 buffer.append(decoded)
             return Result(ok=buffer[1:])
         else:
-            return Result(err=Error("Receive"))
+            return Result(err=Error("Receive", "There is no connection."))
 
 
 class MainChannel(Channel):
@@ -156,39 +181,46 @@ class MainChannel(Channel):
     """
     def __init__(self, ip: str, port: int, ) -> None:
         super().__init__(ip, port)
+        self.connection = self.connect().unwrap()
 
     def first_phase(self, nick: str, ) -> Result:
         data_to_send: List["str"] = ["C MTP V:1.0", f"C {nick}"]
         received_data: List["str"] = list()
+        # sum of all the data sent by the client
+        sum: int = 0
         
         send_result = self.send(data_to_send[0])
 
         if send_result.is_err():
             return send_result
 
+        sum += send_result.unwrap()
+
         receive_result = self.recieve(1024)
         if receive_result.is_err():
             return receive_result
 
-        received_data.append(receive_result.unwrap()[1])
+        received_data.append(receive_result.unwrap()[0])
         send_result = self.send(data_to_send[1])
 
         if send_result.is_err():
             return send_result
 
-        receive_result = self.recieve(1024)
-        if receive_result.is_err():
-            return receive_result
-
-        received_data.append(receive_result.unwrap()[1])
+        sum += send_result.unwrap()
 
         receive_result = self.recieve(1024)
         if receive_result.is_err():
             return receive_result
 
-        received_data.append(receive_result.unwrap()[1])
+        received_data.append(receive_result.unwrap()[0])
 
-        return Result(ok=(received_data[1], received_data[2]))
+        receive_result = self.recieve(1024)
+        if receive_result.is_err():
+            return receive_result
+
+        received_data.append(receive_result.unwrap()[0])
+
+        return Result(ok=(received_data[1], received_data[2], sum))
 
 
 class DataChannel(Channel):
@@ -216,10 +248,12 @@ class DataChannel(Channel):
                 "password": f"C {password}"
                 }
         received_data: List[str] = list()
+        sum: int = 0
 
         initial_contact_result = self.send(data_to_send["nick"])
         if initial_contact_result.is_err():
             return initial_contact_result
+        sum += initial_contact_result.unwrap()
 
         receive_result = self.recieve(1024)
         first = True
@@ -239,43 +273,56 @@ class DataChannel(Channel):
                         received_data.append(data[1])
                         first = False
                 if data := receive_result.unwrap()[1] == "S REQ:meme":
-                    res = self.send(data_to_send["meme"]))
-                    last_data_length = res[0]
+                    res = self.send(data_to_send["meme"])
+                    if res.is_err():
+                        return res
+                    res = res.unwrap()
+                    sum += res
+                    last_data_length = res
                 if data := receive_result.unwrap()[1] == "S REQ:description":
                     res = self.send(data_to_send["description"])
+                    if res.is_err():
+                        return res
+                    res = res.unwrap()
+                    sum += res
                     last_data_length = res[0]
                 if data := receive_result.unwrap()[1] == "S REQ:nsfw":
                     res = self.send(data_to_send["nsfw"])
+                    if res.is_err():
+                        return res
+                    res = res.unwrap()
+                    sum += res
                     last_data_length = res[0]
                 if data := receive_result.unwrap()[1] == "S REQ:password":
                     res = self.send(data_to_send["password"]).is_err()
+                    if res.is_err():
+                        return res
+                    res = res.unwrap()
+                    sum += res
                     last_data_length = res[0]
                 if "S ACK:" in receive_result.unwrap()[1]:
-                    stripped = receive_result.unwrap()[1]
-                                .removeprefix("S ACK:")
+                    stripped = receive_result.unwrap()[1].removeprefix("S ACK:")
                     if int(stripped) != last_data_length:
                         return Result(err=Error("DataChannel",
                                                 msg="Data lenght not same."))
                 if "S END:" in receive_result.unwrap()[1]:
-                    stripped = receive_result.unwrap()[1]\
-                               .removeprefix("S END:")
+                    stripped = receive_result.unwrap()[1].removeprefix("S END:")
                     dtoken = stripped
                     break
-            print("All went well!")
-            return Result(ok=dtoken)
+        print("All went well!")
+        return Result(ok=dtoken)
 
 
 def main() -> None:
-    mtp = MTP("jozko", "dvere")
+    mtp = MTP("jozko", "dvere", meme="dvere.jpg")
     result = mtp.run()
     if result.is_ok():
         print("Done!")
     else:
-        print(result.unwrap().kind())
+        print(str(result))
 
 
-if __name__ == "main":
-    main()
+main()
 
 
 def test_result() -> None:
