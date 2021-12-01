@@ -39,7 +39,7 @@ def download_webpage(url: str, *args, **kwargs) -> requests.Response:
     return requests.get(url, *args, **kwargs)
 
 
-def get_linux_only_availability(cache: "Cache") -> List[str]:
+def get_linux_only_availability(cache: "Cache") -> Tuple[int, List[str]]:
     """
     Finds all functions that area available only on Linux systems
     :param base_url: base url of the website
@@ -60,13 +60,13 @@ def get_linux_only_availability(cache: "Cache") -> List[str]:
                     if ("Unix" or "Linux" in av_without) and\
                         (("Windows" not in av_without)
                          and ("Android" not in av_without) and ("SSL"
-                         not in av_without)):
+                         not in av_without) and ("BSD" not in av_without)):
                         s = f"function_name: {dt} | av: {av_without}\n"
                         lines = lines + s
                         ret.append(dt)
         file.writelines(lines)
     file.close()
-    return ret
+    return (len(ret), ret)
 
 
 def get_most_visited_webpage(cache: "Cache") -> Tuple[int, str]:
@@ -329,22 +329,22 @@ def main() -> None:
     import time
 
     # === testing ===
-    URL = "https://python.iamroot.eu/"
-    cache = Cache(URL, "output")
-    cache.recursively_download_webpage()
-    cache.save()
-    cache.save_pickle("cache.obj")
-    # cache =  Cache.load_pickle("cache.obj")
+    # URL = "https://python.iamroot.eu/"
+    # cache = Cache(URL, "output")
+    # cache.recursively_download_webpage()
+    # cache.save()
+    # cache.save_pickle("cache.obj")
+    cache =  Cache.load_pickle("cache.obj")
 
-    # get_linux_only_availability(cache)  # WORKS
+    print(get_linux_only_availability(cache))  # WORKS
     # print(get_most_visited_webpage(cache))  # WORKS
     # find_secret_tea_party(cache)
     # print(get_changes(cache))  # TODO
     # print(get_most_params(cache))  # TODO
 
-    time_start = time.time()
-    print(json.dumps(scrap_all(cache).as_dict()))
-    print('took', int(time.time() - time_start), 's')
+    # time_start = time.time()
+    # print(json.dumps(scrap_all(cache).as_dict()))
+    # print('took', int(time.time() - time_start), 's')
 
 
 if __name__ == '__main__':
