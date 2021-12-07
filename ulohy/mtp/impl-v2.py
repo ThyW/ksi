@@ -72,7 +72,7 @@ class MTP:
         total_data_sent_size: int = 0
         data_send = {
                 "nick": f"C {self.meme.nick}",
-                "meme": f"C {IMAGE}",
+                "meme": f"C {self.meme.meme_file}",
                 "isNSFW": f"C {self.is_nsfw_f()}",
                 "description": f"C {self.meme.description}",
                 "password": f"C {self.meme.password}",
@@ -98,7 +98,7 @@ class MTP:
                 return (total_data_sent_size, data.removeprefix("END:"))
             if "ACK:" in data:
                 if int(data.removeprefix("ACK:")) != last_data_length:
-                    sock.sendall(pynetstring.encode("E dataLength missmatch!"))
+                    sock.sendall(pynetstring.encode("E dataLength mismatch!"))
                     exit()
             if "REQ:" in data:
                 type = data.removeprefix("REQ:")
@@ -114,8 +114,8 @@ class MTP:
         s, data = self.recieve(sock)
         print(f"rec: {data}, my: {size}")
         if int(data) != size - 4:
-            print("size missmatch")
-            sock.sendall(pynetstring.encode("E size missmatch"))
+            print("size mismatch")
+            sock.sendall(pynetstring.encode("E size mismatch"))
             exit()
 
         sock.sendall(pynetstring.encode(f"C {dtoken}"))
@@ -142,10 +142,12 @@ class MTP:
         else:
             return "false"
 
-    def send_file(self) -> bytes:
+    def send_file(self) -> str:
         print(self.meme.meme_file)
         with open(self.meme.meme_file, "rb") as memimage:
             s = base64.b64encode(memimage.read())
+        s = str(s).removeprefix("b'")
+        s = s.removesuffix("'")
         return s
 
 
