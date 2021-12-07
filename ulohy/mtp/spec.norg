@@ -35,7 +35,7 @@
 
  ** Encoding
     All messages are encoded using [Netstrings](https://cr.yp.to/proto/netstrings.txt), which means all messages are encoded in the following format `<message_lenght>:<messsage>,`, where `<message_lenght>` is the number
-    of characters of the message. This allows for sending 2 messages in a single packet, for example `5:Hellow,5:World,` can be sent like so in a single packet. Messages can also be split into multiple packets like so: 
+    of characters of the message. This allows for sending 2 messages in a single packet, for example `5:Hello,5:World,` can be sent like so in a single packet. Messages can also be split into multiple packets like so: 
     `40:Memes are the be` and `st communication medium!,`.
 
 * Todo
