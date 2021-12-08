@@ -40,18 +40,13 @@
 
 * Todo
  ** Implemenent MTP
-    - [ ] get the basic implementation up and running
-	- [ ] class MTP
-	- [ ] class Channel for handling communication
-	- REWRITE
+    - [x] REWRITE
  ** Graphical UI
     - [ ] create a graphical ui
  ** Documentation
     - [ ] write nice and readable docs
  ** Standards
     - [ ] adhere to all `pycodestyle` standards
- ** Code TODOS
-    - [ ] Fix this function(implementation.Channel.receive) to also check for errors with received data length.
-    - [ ] *implementation.Channel.receive* should be able to recieve until a while message is received.
-    - [ ] Implement error responese to the server from the client.
-    - [ ] Implement *implementatoin.Channel.send_error*.
+ ** Clean up the code
+    - [ ] clean up lsp errors
+    - [ ] generally make the code more readable

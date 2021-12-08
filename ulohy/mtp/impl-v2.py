@@ -1,13 +1,11 @@
 #! /usr/bin/env python3
 
-import sys
 import pynetstring
 import socket
-import os
 import base64
 from socket import socket as Socket
 
-from typing import List, Dict, Optional, Tuple, NamedTuple
+from typing import Tuple, NamedTuple
 
 
 SERVER_IP = "159.89.4.84"
@@ -21,7 +19,6 @@ class Meme(NamedTuple):
     description: str
     meme_file: str
     is_nsfw: bool = False
-
 
 
 class MTP:
@@ -52,13 +49,14 @@ class MTP:
         data_receive = []
 
         sock.sendall(pynetstring.encode(data_send[0]))
-        total_data_sent_size += len([data_send[0]]) - 1
+        total_data_sent_size += len([data_send[0]])
+        print(len(data_send[0]))
 
         data = self.recieve(sock)
         data_receive.append(data[1])
 
         sock.sendall(pynetstring.encode(data_send[1]))
-        total_data_sent_size += len([data_send[1]]) - 2
+        total_data_sent_size += len([data_send[1]])
 
         data = self.recieve(sock)
         data_receive.append(data[1])
@@ -72,7 +70,7 @@ class MTP:
         total_data_sent_size: int = 0
         data_send = {
                 "nick": f"C {self.meme.nick}",
-                "meme": f"C {self.meme.meme_file}",
+                "meme": f"C {self.send_file()}",
                 "isNSFW": f"C {self.is_nsfw_f()}",
                 "description": f"C {self.meme.description}",
                 "password": f"C {self.meme.password}",
@@ -80,7 +78,7 @@ class MTP:
         data_receive = []
 
         sock.sendall(pynetstring.encode(data_send["nick"]))
-        total_data_sent_size += len(data_send["nick"]) - 2
+        total_data_sent_size += len([data_send["nick"]])
 
         data = self.recieve(sock)
         data_receive.append(data)
@@ -88,6 +86,8 @@ class MTP:
 
         if rc_token != token:
             sock.sendall(pynetstring.encode("E Tokens are not the same!"))
+            print("tokens not the same!")
+            exit()
 
         s, data = self.recieve(sock)
         
@@ -99,10 +99,12 @@ class MTP:
             if "ACK:" in data:
                 if int(data.removeprefix("ACK:")) != last_data_length:
                     sock.sendall(pynetstring.encode("E dataLength mismatch!"))
+                    print(f"size mismatch on {data}, {last_data_length}" )
                     exit()
             if "REQ:" in data:
                 type = data.removeprefix("REQ:")
                 what = data_send[type]
+                print(f"what: {what}")
                 last_data_length = len(what) - 2
                 enc = pynetstring.encode(what)
                 sock.sendall(enc)
@@ -112,8 +114,8 @@ class MTP:
 
     def final_phase(self, sock: Socket, dtoken: str, size: int) -> None:
         s, data = self.recieve(sock)
-        print(f"rec: {data}, my: {size}")
-        if int(data) != size - 4:
+        print(f"rec: {data}, my: {size - 3}")
+        if int(data) != size - 3:
             print("size mismatch")
             sock.sendall(pynetstring.encode("E size mismatch"))
             exit()
@@ -125,16 +127,15 @@ class MTP:
             print("all is well")
             return
 
-    def stripper(self, expr: str) -> str:
-        temp = expr.removeprefix(r"b'S ")
-        return temp.removesuffix("'")
+    def stripper(self, expr: bytes) -> str:
+        return expr.decode("utf-8").removeprefix('S ')
 
     def recieve(self, sock: Socket) -> Tuple[int, str]:
         decoder = pynetstring.Decoder()
         data = sock.recv(8128)
         data = [item for item in decoder.feed(data)]
 
-        return (len(data[0]), self.stripper(str(data[0])))
+        return (len(data[0]), self.stripper(data[0]))
     
     def is_nsfw_f(self) -> str:
         if self.meme.is_nsfw:
@@ -146,13 +147,12 @@ class MTP:
         print(self.meme.meme_file)
         with open(self.meme.meme_file, "rb") as memimage:
             s = base64.b64encode(memimage.read())
-        s = str(s).removeprefix("b'")
-        s = s.removesuffix("'")
-        return s
+        print(f"file_send{s.decode('utf-8')}")
+        return s.decode("utf-8")
 
 
 def main() -> None:
-    mtp = MTP(SERVER_IP, PORT, Meme("dvere", "erevd", "dvere", "dvere.jpeg"))
+    mtp = MTP(SERVER_IP, PORT, Meme("dvere", "erevd", "dvere", "./dvere.jpg"))
     mtp.run()
 
 
