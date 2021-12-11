@@ -42,11 +42,12 @@
  ** Implemenent MTP
     - [x] REWRITE
  ** Graphical UI
-    - [ ] create a graphical ui
+    - [x] create a graphical ui
+    - [ ] finish the popup windows colors
  ** Documentation
     - [ ] write nice and readable docs
  ** Standards
-    - [ ] adhere to all `pycodestyle` standards
+    - [x] adhere to all `pycodestyle` standards
  ** Clean up the code
     - [ ] clean up lsp errors
-    - [ ] generally make the code more readable
+    - [x] generally make the code more readable

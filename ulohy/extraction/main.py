@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 from typing import NamedTuple, Optional, Dict, Tuple, List, Any
-
 import requests
-
 import os
 import bs4
 from urllib.parse import urlparse, urljoin
 import pickle
+import json
+import time
 
 
 class FullScrap(NamedTuple):
@@ -100,7 +100,7 @@ def get_changes(cache: "Cache") -> List[Tuple[int, str]]:
         # handle version added
         for each_added in version_added:
             found = each_added.find("span", class_="versionmodified added")
-            if not found is None:
+            if found:
                 # print(f"added: {found.text}")
                 parsed = found.text.removeprefix("New in version ")
                 if ":" in parsed:
@@ -116,7 +116,8 @@ def get_changes(cache: "Cache") -> List[Tuple[int, str]]:
                         changes[split] = 1
 
         for each_changed in version_changed:
-            found = each_changed.find_all("span", class_="versionmodified changed")
+            found = each_changed.\
+                    find_all("span", class_="versionmodified changed")
             for each in found:
                 # print(f"changed: {each.text}")
                 parsed = each.text.removeprefix("Changed in version ")
@@ -132,12 +133,11 @@ def get_changes(cache: "Cache") -> List[Tuple[int, str]]:
                     else:
                         changes[split] = 1
 
-    l = list()
-    s = sorted(changes.items(), key=lambda x: x[1])
-    s = dict(s)
+    li = list()
+    s = dict(sorted(changes.items(), key=lambda x: x[1]))
     for each in s.items():
-        l.append((each[1], each[0]))
-    return l[::-1]
+        li.append((each[1], each[0]))
+    return li[::-1]
 
 
 def get_most_params(cache: "Cache") -> List[Tuple[int, str]]:
@@ -159,7 +159,7 @@ def get_most_params(cache: "Cache") -> List[Tuple[int, str]]:
             params = dt.find_all("em", class_="sig-param")
             if len(params) > 10:
                 l.append((len(params), name))
-    return list(sorted(l, key=lambda x: x[0]))[::-1]
+    return list(sorted(l, key=lambda x: (-x[0], x[1])))
 
 
 def find_secret_tea_party(cache: "Cache") -> Optional[str]:
@@ -271,11 +271,11 @@ class Cache:
                     + parsed_url.netloc + parsed_url.path
                 if not self.valid_url(new_url):
                     continue
-                if new_url in visited_urls: 
+                if new_url in visited_urls:
                     continue
                 if domain not in new_url:
                     continue
-                if (new_url in visited_urls or new_url in errored_urls \
+                if (new_url in visited_urls or new_url in errored_urls
                    or new_url in url_stack) and new_url != current:
                     if self.url_count.get(new_url) is None:
                         self.url_count[new_url] = 1
@@ -304,7 +304,7 @@ class Cache:
         with open(path, "r") as save_file:
             for line in save_file.read().splitlines():
                 sp = line.split(";")
-                self.output[sp[0]] = Pair(download_webpage(sp[0]), nr=sp[1])
+                self.output[sp[0]] = download_webpage(sp[0])
 
     def save_pickle(self, file: str):
         with open(file, "wb") as f:
@@ -325,26 +325,27 @@ def main() -> None:
     :return:
     """
     # Tuto funkci klidne muzes zmenit podle svych preferenci :)
-    import json
-    import time
 
     # === testing ===
-    # URL = "https://python.iamroot.eu/"
-    # cache = Cache(URL, "output")
-    # cache.recursively_download_webpage()
-    # cache.save()
-    # cache.save_pickle("cache.obj")
-    cache =  Cache.load_pickle("cache.obj")
+    cache = None
+    if os.path.exists("cache.obj"):
+        cache = Cache.load_pickle("cache.obj")
+    else:
+        URL = "https://python.iamroot.eu/"
+        cache = Cache(URL, "output")
+        cache.recursively_download_webpage()
+        cache.save()
+        cache.save_pickle("cache.obj")
 
-    print(get_linux_only_availability(cache))  # WORKS
+    # print(get_linux_only_availability(cache))  # WORKS
     # print(get_most_visited_webpage(cache))  # WORKS
-    # find_secret_tea_party(cache)
-    # print(get_changes(cache))  # TODO
-    # print(get_most_params(cache))  # TODO
+    # print(find_secret_tea_party(cache))  # WORKS
+    # print(get_changes(cache))  # WORKS
+    # print(get_most_params(cache))  # WORKS
 
-    # time_start = time.time()
-    # print(json.dumps(scrap_all(cache).as_dict()))
-    # print('took', int(time.time() - time_start), 's')
+    time_start = time.time()
+    print(json.dumps(scrap_all(cache).as_dict()))
+    print('took', int(time.time() - time_start), 's')
 
 
 if __name__ == '__main__':

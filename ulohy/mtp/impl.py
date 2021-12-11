@@ -5,7 +5,7 @@ import socket
 import base64
 from socket import socket as Socket
 
-from typing import Tuple, NamedTuple
+from typing import Tuple, NamedTuple, Union, List
 
 
 SERVER_IP = "159.89.4.84"
@@ -25,11 +25,13 @@ class Mtp:
         self.meme = meme
         self.ip = ip
         self.port = port
+        self.status: str = "Not run yet!"
 
     def __str__(self) -> str:
         return f"ip: {self.ip}, port: {self.port}, meme: {self.meme}"
 
     def run(self) -> None:
+        self.status = "Started running!"
         size: int = 0
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((self.ip, self.port))
@@ -39,6 +41,8 @@ class Mtp:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as ds:
                 ds.connect((self.ip, int(data_port)))
                 fsize, dtoken = self.second_phase(ds, token)
+                if fsize == 0 and dtoken == "":
+                    return
                 size += fsize
                 dt = dtoken
             self.final_phase(s, dt, size)
@@ -50,7 +54,6 @@ class Mtp:
 
         sock.sendall(pynetstring.encode(data_send[0]))
         total_data_sent_size += len([data_send[0]])
-        print(len(data_send[0]))
 
         data = self.recieve(sock)
         data_receive.append(data[1])
@@ -86,8 +89,8 @@ class Mtp:
 
         if rc_token != token:
             sock.sendall(pynetstring.encode("E Tokens are not the same!"))
-            print("tokens not the same!")
-            exit()
+            self.status = "Error: Token mismatch!"
+            return (0, "")
 
         _, data = self.recieve(sock)
 
@@ -98,12 +101,11 @@ class Mtp:
             if "ACK:" in data:
                 if int(data.removeprefix("ACK:")) != last_data_length:
                     sock.sendall(pynetstring.encode("E dataLength mismatch!"))
-                    print(f"size mismatch on {data}, {last_data_length}")
-                    exit()
+                    self.status = f"Error: size mismatch on {data}, {last_data_length}"
+                    return (0, "")
             if "REQ:" in data:
                 type = data.removeprefix("REQ:")
                 what = data_send[type]
-                print(f"what: {what}")
                 last_data_length = len(what) - 2
                 enc = pynetstring.encode(what)
                 sock.sendall(enc)
@@ -113,20 +115,19 @@ class Mtp:
 
     def final_phase(self, sock: Socket, dtoken: str, size: int) -> None:
         _, data = self.recieve(sock)
-        print(f"rec: {data}, my: {size - 3}")
         if int(data) != size - 3:
             print("size mismatch")
+            self.status = f"Error: size mismatch: {int(data)} != {size - 3}"
             sock.sendall(pynetstring.encode("E size mismatch"))
-            exit()
+            return
 
         sock.sendall(pynetstring.encode(f"C {dtoken}"))
 
         _, data = self.recieve(sock)
         if data == "ACK":
-            print("all is well")
-            return
+            self.status = "[SUCCES] Transaction was successful!"
 
-    def stripper(self, expr: bytes) -> str:
+    def stripper(self, expr: bytes) -> List[str]:
         return expr.decode("utf-8").removeprefix('S ')
 
     def recieve(self, sock: Socket) -> Tuple[int, str]:
@@ -143,13 +144,15 @@ class Mtp:
             return "false"
 
     def send_file(self) -> str:
-        print(self.meme.meme_file)
+        # print(self.meme.meme_file)
         with open(self.meme.meme_file, "rb") as memimage:
             s = base64.b64encode(memimage.read())
-        print(f"file_send{s.decode('utf-8')}")
         return s.decode("utf-8")
+
+    def get_status(self) -> str:
+        return self.status
 
 
 def test() -> None:
-    mtp = Mtp(SERVER_IP, PORT, Meme("dvere", "erevd", "dvere", "./dvere.jpg"))
+    mtp = Mtp(SERVER_IP, PORT, Meme("dvere", "erevd", "dvere", "./dvere.jpeg"))
     mtp.run()
