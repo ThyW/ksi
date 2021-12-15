@@ -1,0 +1,28 @@
+@document.meta
+        title: spec
+        description: 
+        authors: zir
+        categories: 
+        created: 2021-12-15
+        version: 0.0.9
+@end
+
+* Webserver
+  - [x] User logging
+  - [ ] Device communication
+  - [ ] Device serialization
+  - [ ] Cron jobs
+ ** Templates
+    - [?] home
+    - [ ] overview
+    - [x] login
+    - [x] logout
+    - [x] signup
+    - [ ] device_info
+    - [ ] buttons
+
+* How?
+ ** User storing
+    - Users are stored in the `users/` directory.
+    -- After signing up, a username and an unique id are stored in the db.txt file.
+    -- Also, a file with the json representation of the user is stored to the same directory with the same file name as user id.

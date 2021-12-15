@@ -1,121 +1,65 @@
 #!/usr/bin/env python3
 
-from device import Device, DeviceType
+from device import DevicePowerData, DeviceType, DeviceData
 from json import loads
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 
 #  TODO: finish all the class methods
 
-class MotionSensor(Device):
-    def __init__(self, type_: DeviceType, id: str, notes: str) -> None:
-        super().__init__(type_, id, notes)
-        self.collector_url: str
-        self.last_triggered_timestamp: int = 0
-
-    @classmethod
-    def from_json(cls, json_obj: str) -> "MotionSensor":
-        o = loads(json_obj)
-
-        d = MotionSensor(o['type'], o['id'], o['notes'])
-        d.add_actions([x for x in o['actions']])
-        d.collector_url = o['collector_url']
-        d.last_triggered_timestamp = o['last_triggered_timestamp']
-        return d
+@dataclass
+class MotionSensor(DeviceData):
+    collector_url: str
+    last_triggered_timestamp: int
+    type: DeviceType = DeviceType.MOTION_SENSOR
 
 
-class SmartLight(Device):
-    def __init__(self, type_: DeviceType, id: str, notes: str) -> None:
-        super().__init__(type_, id, notes)
-        self.color_temperature: int
-        self.current_state: bool
-        self.power_usage: int
-        self.power_usage_coefficient: int
-        self.power_usage_last_recalculated: int
-
-    @classmethod
-    def from_json(cls, json_obj: str) -> "SmartLight":
-        o = loads(json_obj)
-
-        d = SmartLight(o['type'], o['id'], o['notes'])
-        d.add_actions([x for x in o['actions']])
-        d.color_temperature = o['color_temperature']
-        d.current_state = o['current_state']
-        d.power_usage = o['power_usage']
-        d.power_usage_coefficient = o['power_usage_coefficient']
-        d.power_usage_last_recalculated = o['power_usage_last']
-        return d
+@dataclass
+class SmartLight(DevicePowerData):
+    color_temperature: int
+    type: DeviceType = DeviceType.SMART_LIGHT
 
 
-class SmartPlug(Device):
-    def __init__(self, type_: DeviceType, id: str, notes: str) -> None:
-        super().__init__(type_, id, notes)
-        self.current_state: bool
-        self.power_usage: int
-        self.power_usage_coefficient: int
-        self.power_usage_last_recalculated: int
-
-    @classmethod
-    def from_json(cls, json_obj: str) -> "SmartPlug":
-        o = loads(json_obj)
-
-        d = SmartPlug(o['type'], o['id'], o['notes'])
-        d.add_actions([x for x in o['actions']])
-        d.current_state = o['current_state']
-        d.power_usage = o['power_usage']
-        d.power_usage_coefficient = o['power_usage_coefficient']
-        d.power_usage_last_recalculated = o['power_usage_last_recalculated']
-        return d
+@dataclass
+class SwitchSensor(DevicePowerData):
+    collector_url: str
+    type: DeviceType = DeviceType.SWITCH_SENSOR
 
 
-class SmartRadiator(Device):
-    def __init__(self, type_: DeviceType, id: str, notes: str) -> None:
-        super().__init__(type_, id, notes)
-        self.current_state: bool
-        self.power_usage: int
-        self.power_usage_coefficient: int
-        self.power_usage_last_recalculated: int
+@dataclass
+class SmartPlug(DevicePowerData):
+    type: DeviceType = DeviceType.SMART_PLUG
 
-    @classmethod
-    def from_json(cls, json_obj: str) -> "SmartRadiator":
-        o = loads(json_obj)
 
-        d = SmartRadiator(o['type'], o['id'], o['notes'])
-        d.add_actions([x for x in o['actions']])
-        d.current_state = o['current_state']
-        d.power_usage = o['power_usage']
-        d.power_usage_coefficient = o['power_usage_coefficient']
-        d.power_usage_last_recalculated = o['power_usage_last_recalculated']
-        return d
+@dataclass
+class SmartRadiator(DevicePowerData):
+    type: DeviceType = DeviceType.SMART_RADIATOR
 
-class SwitchSensor(Device):
-    def __init__(self, type_: DeviceType, id: str, notes: str) -> None:
-        super().__init__(type_, id, notes)
-        self.current_state: bool
-        self.power_usage: int
-        self.power_usage_coefficient: int
-        self.power_usage_last_recalculated: int
 
-    @classmethod
-    def from_json(cls, json_obj: str) -> "SmartRadiator":
-        o = loads(json_obj)
+@dataclass
+class TemperatureSensor(DevicePowerData):
+        temperature: int
+        type: DeviceType = DeviceType.TEMPERATURE_SENSOR
 
-        d = SwitchSensor(o['type'], o['id'], o['notes'])
-        d.add_actions([x for x in o['actions']])
-        d.current_state = o['current_state']
-        d.power_usage = o['power_usage']
-        d.power_usage_coefficient = o['power_usage_coefficient']
-        d.power_usage_last_recalculated = o['power_usage_last_recalculated']
-        return d
 
-class TemperatureSensor(Device):
-    def __init__(self, type_: DeviceType, id: str, notes: str) -> None:
-        super().__init__(type_, id, notes)
-        self.temperature: int
-
-    @classmethod
-    def from_json(cls, json_obj: str) -> "TemperatureSensor":
-        o = loads(json_obj)
-
-        d = SwitchSensor(o['type'], o['id'], o['notes'])
-        d.add_actions([x for x in o['actions']])
-        d.temperature = o['temperature']
-        return d
+def test() -> None:
+    switch_json = """
+{
+  "actions": {
+    "change_report_url": "http://home_automation.iamroot.eu/device/6be66bc8-2d69-4fad-ba29-672f11e4844c/report_url?url=http%3A%2F%2Fhome_automation.iamroot.eu%2Fdevice%2F6be66bc8-2d69-4fad-ba29-672f11e4844c%2Fevent", 
+    "device_info": "http://home_automation.iamroot.eu/device/6be66bc8-2d69-4fad-ba29-672f11e4844c", 
+    "set_notes_POST": "http://home_automation.iamroot.eu/device/6be66bc8-2d69-4fad-ba29-672f11e4844c/notes", 
+    "trigger_report": "http://home_automation.iamroot.eu/device/6be66bc8-2d69-4fad-ba29-672f11e4844c/trigger"
+  }, 
+  "collector_url": "http://home_automation.iamroot.eu/device/6be66bc8-2d69-4fad-ba29-672f11e4844c/event", 
+  "current_state": false, 
+  "id": "6be66bc8-2d69-4fad-ba29-672f11e4844c", 
+  "notes": "", 
+  "power_usage": 0, 
+  "power_usage_coefficient": 100, 
+  "power_usage_last_recalculated": 1639599062, 
+  "type": "SwitchSensor"
+}"""
+    switch = SwitchSensor.from_json(switch_json)
+    print(switch)
+test()

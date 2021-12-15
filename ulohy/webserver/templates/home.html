@@ -1,9 +1,25 @@
-<!DOCTYPE html>
-<html>
-    <head>
-	<title> this is head </title>
-    </head>
-    <body>
-	<p>this is a funny paragraph</p>
-    </body>
-</html>
+{% extends 'base.html' %}
+
+{% block content %}
+<h3>
+    Welcome to <strong>Sob Krasob's home automation server(SKHAS)</strong>
+</h3>
+<p><strong>Logged in as:</strong></p>
+{% if user: %}
+<p>{{user}}</p>
+{% else: %}
+<p>Not logged in!</p>
+{% endif %}
+<p><strong>Info:</strong></p>
+{% if info: %}
+<p>{{info}}</p>
+{% else: %}
+<p>---</p>
+{% endif %}
+<p><strong>Errors:</strong></p>
+{% if error: %}
+<p> {{error}} </p>
+{% else: %}
+<p>---</p>
+{% endif %}
+{% endblock %}
