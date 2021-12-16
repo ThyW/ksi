@@ -9,8 +9,9 @@
 
 * Webserver
   - [x] User logging
-  - [ ] Device communication
-  - [ ] Device serialization
+  - [ ]  Device communication
+  -- [-] Setup
+  - [?] Device serialization
   - [ ] Cron jobs
  ** Templates
     - [?] home
@@ -26,3 +27,15 @@
     - Users are stored in the `users/` directory.
     -- After signing up, a username and an unique id are stored in the db.txt file.
     -- Also, a file with the json representation of the user is stored to the same directory with the same file name as user id.
+ ** The setup script
+    - Before running the server for the first time, the setup script needs to be ran.
+    -- Create the directory `devices` or whatever other name you choose from, however, you will need to rename the directory in the setup script also.
+    - After running the script you can feel free to start the server.
+  *** *Explanation*
+      - `setup` starts by creating new devices by doing requests to the specified URL
+      - these are then parsed to their python object form
+      - after that, notes are added with the name of the room each of these devices are located in, Switches and Motion Sensors are linked to their rightful URLs and synced with the server
+      - after that the entire state is saved to disc
+      -- Two kinds of files are create:
+      --- `config.json` where all the devices and rooms are stored
+      --- `<device_id>.json` actual json representation of the device, this can then be parsed back to a python object and synced with the server

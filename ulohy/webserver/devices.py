@@ -4,8 +4,8 @@ from device import DevicePowerData, DeviceType, DeviceData
 from json import loads
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
+from enum import Enum
 
-#  TODO: finish all the class methods
 
 @dataclass
 class MotionSensor(DeviceData):
@@ -61,5 +61,28 @@ def test() -> None:
   "type": "SwitchSensor"
 }"""
     switch = SwitchSensor.from_json(switch_json)
-    print(switch)
-test()
+
+    lamp_json = """
+{
+  "actions": {
+    "change_color_blue_sky": "http://home_automation.iamroot.eu/device/ada0537c-5d95-47c5-9337-d7a027affbd3/color_temperature/10000", 
+    "change_color_high_noon": "http://home_automation.iamroot.eu/device/ada0537c-5d95-47c5-9337-d7a027affbd3/color_temperature/5000", 
+    "change_color_sunset": "http://home_automation.iamroot.eu/device/ada0537c-5d95-47c5-9337-d7a027affbd3/color_temperature/3500", 
+    "device_info": "http://home_automation.iamroot.eu/device/ada0537c-5d95-47c5-9337-d7a027affbd3", 
+    "set_notes_POST": "http://home_automation.iamroot.eu/device/ada0537c-5d95-47c5-9337-d7a027affbd3/notes", 
+    "toggle_state": "http://home_automation.iamroot.eu/device/ada0537c-5d95-47c5-9337-d7a027affbd3/toggle", 
+    "turn_off": "http://home_automation.iamroot.eu/device/ada0537c-5d95-47c5-9337-d7a027affbd3/state/off", 
+    "turn_on": "http://home_automation.iamroot.eu/device/ada0537c-5d95-47c5-9337-d7a027affbd3/state/on"
+  }, 
+  "color_temperature": 5000, 
+  "current_state": false, 
+  "id": "ada0537c-5d95-47c5-9337-d7a027affbd3", 
+  "notes": "", 
+  "power_usage": 0, 
+  "power_usage_coefficient": 100, 
+  "power_usage_last_recalculated": 1639695126, 
+  "type": "SmartLight"
+}
+    """
+    light = SmartLight.from_json(lamp_json)
+    print(light)
