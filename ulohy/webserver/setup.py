@@ -3,6 +3,7 @@
 import devices as devs
 import requests
 import json
+import urllib.parse as up
 
 from typing import List, Any
 
@@ -12,6 +13,13 @@ NUM_ROOMS: int = 7
 PATH = "devices/"
 CONFIG_NAME = "config.json"
 URL = "https://home_automation.iamroot.eu/"
+
+
+def get_device_for_id(id: str, l: List[Any]) -> Any:
+    for each in l:
+        if each.id == id:
+            return each
+    return None
 
 
 def get_devices() -> List[Any]:
@@ -73,15 +81,47 @@ def create_config(devices_list: List[Any]) -> None:
                         note = f"{{room: {room}}}"
                         requests.post(f"{URL}device/{each.id}notes", data=note)
                         each.notes = note
-                if each.type == devs.DeviceType.SWITCH_SENSOR:
+                        break
+                elif each.type == devs.DeviceType.SWITCH_SENSOR:
                     if config[room]["switch_sensor"] is None:
                         config[room]["switch_sensor"] = each.id
                         note = f"{{room: {room}}}"
                         requests.post(f"{URL}device/{each.id}notes", data=note)
                         each.notes = note
+                        break
+    for room in config:
+        if config[room].get("motion_sensor") is not None:
+            # if there is a motion sensor:
+            # motion sensor trigger -> switch_trigger -> light on
+            ms = get_device_for_id(config[room]["motion_sensor"], devices_list)
+            ss = get_device_for_id(config[room]["switch_sensor"], devices_list)
+            sl = get_device_for_id(config[room]["smart_light"], devices_list)
+
+            ss_quoted_url = up.quote_plus(sl.actions["toggle_state"])
+            ms_quoted_url = up.quote_plus(sl.actions["turn_on"])
+            ms_new_collector_url = f"{URL}device/{ms.id}/report_url?url={ms_quoted_url}"
+            ss_new_collector_url = f"{URL}/device/{ss.id}/report_url?url={ss_quoted_url}"
+
+            requests.post(ms_new_collector_url)
+            requests.post(ss_new_collector_url)
+
+            ms.collector_url = sl.actions["turn_on"]
+            ms.actions["change_report_url"] = ms_new_collector_url
+            ss.collector_url = sl.actions["toggle_state"]
+            ss.actions["change_report_url"] = ss_new_collector_url
+        else:
+            ss = get_device_for_id(config[room]["switch_sensor"], devices_list)
+            sl = get_device_for_id(config[room]["smart_light"], devices_list)
+
+            ss_quoted_url = up.quote_plus(sl.actions["toggle_state"])
+            ss_new_collector_url = f"{URL}/device/{ss.id}/report_url?url={ss_quoted_url}"
+
+            requests.post(ss_new_collector_url)
+
+            ss.collector_url = sl.actions["toggle_state"]
+            ss.actions["change_report_url"] = ss_new_collector_url
 
     with open(f"{PATH}{CONFIG_NAME}", "w") as f:
-        print(config)
         json.dump(config, f)
     write_devices(devices_list)
 
