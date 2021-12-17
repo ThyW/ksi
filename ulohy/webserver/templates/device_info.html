@@ -1,4 +1,24 @@
 {% extends 'base.html' %}
 
 {% block content%}
+<table>
+    <tr>
+	<th>Room</th>
+	<th>Type</th>
+	<th>State</th>
+	<th>Up Time</th>
+    </tr>
+    {% if devices%}
+	{% for device in devices: %}
+	<tr>
+	    <td>{{device.room}}</td>
+	    <td>{{device.type}}</td>
+	    <td>{{device.state}}</td>
+	    <td>{{device.uptime}}</td>
+	</tr>
+	{% endfor %}
+    {%else:%}
+	dvere
+    {% endif %}
+</table>
 {% endblock %}

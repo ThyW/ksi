@@ -9,18 +9,19 @@
 
 * Webserver
   - [x] User logging
-  - [ ]  Device communication
-  -- [-] Setup
-  - [?] Device serialization
+  - [x]  Device communication
+  -- [x] Setup
+  - [x] Device serialization
   - [ ] Cron jobs
  ** Templates
-    - [?] home
-    - [ ] overview
+    - [x] home
+    - [ ] overview(who should pay how much)
     - [x] login
     - [x] logout
     - [x] signup
     - [ ] device_info
-    - [ ] buttons
+    - [ ] buttons for toggling lights
+    - [ ] map of devices
 
 * How?
  ** User storing

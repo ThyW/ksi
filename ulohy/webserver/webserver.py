@@ -3,12 +3,19 @@
 from flask import Flask, Response, render_template, session, request, redirect, url_for
 import requests
 import json
-from typing import Union
+from typing import List
+from datetime import datetime
+from dataclasses import dataclass
 
 import roommate as rm
+import devices as devs
 
 #  import all the necessary data classes.
 #  Roomate, Device, more to come
+
+
+DEVS = "devices/"
+DEV_CONFIG = f"{DEVS}config.json"
 
 
 app = Flask(__name__, template_folder="templates")
@@ -79,7 +86,52 @@ def buttons() -> str:
 
 @app.route('/device_info')
 def device_info() -> str:
-    return render_template('device_info.html')
+    devices = prepare_devices()
+    return render_template('device_info.html', devices=devices)
+
+
+#  === BACKEND LOGIC ===
+@dataclass
+class Prepared:
+    room: str
+    type: str
+    state: str
+    uptime: str
+
+    @classmethod
+    def load(cls, type: str, room: str, file: str) -> "Prepared":
+        p: Prepared
+        with open(file, "r") as f:
+            loaded_json = json.load(f)
+        if type == "smart_light":
+            dev = devs.SmartLight.from_json(loaded_json)
+            state = "ON" if dev.current_state else "OFF"
+            p = Prepared(room.capitalize(), dev.type, state, get_time(dev.power_usage))
+        elif type == "switch_sensor":
+            dev = devs.SwitchSensor.from_json(loaded_json)
+            state = "ON" if dev.current_state else "OFF"
+            p = Prepared(room.capitalize(), dev.type, state, get_time(dev.power_usage))
+        elif type == "motion_sensor":
+            dev = devs.MotionSensor.from_json(loaded_json)
+            p = Prepared(room.capitalize(), dev.type, "---", "---")
+        return p
+
+
+def prepare_devices() -> List[Prepared]:
+    prepped_devices = list()
+    with open(DEV_CONFIG, "r") as f:
+        d = json.load(f)
+        for room in d.keys():
+            for type, id in d[room].items():
+                if id:
+                    prepped_devices.append(Prepared.load(type, room, f"{DEVS}{id}.json"))
+    return prepped_devices
+
+
+def get_time(time: int) -> str:
+    min, sec = divmod(time, 60)
+    hour, min = divmod(min, 60)
+    return "%d:%02d:%02d" % (hour, min, sec)
 
 
 def main() -> None:
