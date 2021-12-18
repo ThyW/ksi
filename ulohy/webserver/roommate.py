@@ -16,13 +16,14 @@ class Roommate:
     uname: str
     passwd: str
     id: int
+    room: str
     costs: int = 0
     time: int = 0
 
     @classmethod
-    def new(cls, uname: str, passwd: str) -> "Roommate":
+    def new(cls, uname: str, passwd: str, room: str) -> "Roommate":
         id = uuid.uuid4()
-        c = Roommate(uname, passwd, int(id))
+        c = Roommate(uname, passwd, int(id), room)
         return c
 
 

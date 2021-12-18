@@ -13,6 +13,7 @@ NUM_ROOMS: int = 7
 PATH = "devices/"
 CONFIG_NAME = "config.json"
 URL = "https://home_automation.iamroot.eu/"
+ROOMS = ["kuchyna", "kupelna", "obyvak","sob_karsob", "karlik", "zelvicka_julie", "los_karlos"]
 
 
 def get_device_for_id(id: str, l: List[Any]) -> Any:
@@ -61,8 +62,7 @@ def write_devices(device_list: List[Any]) -> None:
 
 def create_config(devices_list: List[Any]) -> None:
     config = dict()
-    rooms = ["kuchyna", "kupelna", "obyvak","sob_karsob", "karlik", "zelvicka_julie", "los_karlos"]
-    for room in rooms:
+    for room in ROOMS:
         config[room] = dict()
         config[room]["motion_sensor"] = None
         config[room]["smart_light"] = None
@@ -73,6 +73,7 @@ def create_config(devices_list: List[Any]) -> None:
             config[room]["motion_sensor"] = each.id
             note = f"{{room: {room}}}"
             requests.post(f"{URL}device/{each.id}notes", data=note)
+            each.notes = note
         else:
             for room in config.keys():
                 if each.type == devs.DeviceType.SMART_LIGHT:

@@ -38,8 +38,8 @@ class SmartRadiator(DevicePowerData):
 
 @dataclass
 class TemperatureSensor(DevicePowerData):
-        temperature: int
-        type: DeviceType = DeviceType.TEMPERATURE_SENSOR
+    temperature: int
+    type: DeviceType = DeviceType.TEMPERATURE_SENSOR
 
 
 def test() -> None:

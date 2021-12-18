@@ -1,6 +1,6 @@
 @document.meta
         title: spec
-        description: 
+        description: notes and spec for the webserver KSI assignment
         authors: zir
         categories: 
         created: 2021-12-15
@@ -12,16 +12,17 @@
   - [x]  Device communication
   -- [x] Setup
   - [x] Device serialization
-  - [ ] Cron jobs
+  - [x] Cron jobs
+  -- Cron requests are expected every minute, it break otherwise :/
  ** Templates
     - [x] home
     - [ ] overview(who should pay how much)
     - [x] login
     - [x] logout
     - [x] signup
-    - [ ] device_info
-    - [ ] buttons for toggling lights
-    - [ ] map of devices
+    - [x] device_info
+    - [x] buttons for toggling lights
+    - [x] map of devices
 
 * How?
  ** User storing

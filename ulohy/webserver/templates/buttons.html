@@ -2,4 +2,34 @@
 
 {% block content %}
 
+<table class="table">
+    <thead>
+	<tr>
+	    <th scope="col">Room</th>
+	    <th scope="col">State</th>
+	    <th scope="col">Turn On</th>
+	    <th scope="col">Turn Off</th>
+	</tr>
+    </thead>
+    {%if available:%}
+	{% for (room, each) in available.items():%}
+	    <tr>
+		<td>{{room}}</td>
+		{% if each[1].current_state:%}
+		<td>ON</td>
+		{% else: %}
+		<td>OFF</>
+		{% endif %}
+		{% if each[0]: %}
+		<td><form method="post"><button name="{{each[1].id}}_on">ON</button></form></td>
+		<td><form method="post"><button name="{{each[1].id}}_off">Off</button></form></td>
+		{%else:%}
+		    <td>---</td>
+		    <td>---</td>
+		{%endif%}
+	    </tr>
+	{% endfor %}
+    {%else:%}
+	oops
+    {%endif%}
 {% endblock %}

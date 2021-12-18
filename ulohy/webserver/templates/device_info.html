@@ -1,24 +1,32 @@
 {% extends 'base.html' %}
 
 {% block content%}
-<table>
-    <tr>
-	<th>Room</th>
-	<th>Type</th>
-	<th>State</th>
-	<th>Up Time</th>
-    </tr>
-    {% if devices%}
-	{% for device in devices: %}
+<table class="table">
+    <thead>
+	<tr>
+	    <th scope="col">Room</th>
+	    <th scope="col">Type</th>
+	    <th scope="col">State</th>
+	    <th scope="col">Temperature</th>
+	    <th scope="col">Up Time</th>
+	    <th scope="col">Link</th>
+	</tr>
+    <thead>
+    {% if device_list%}
+	{% for device in device_list %}
 	<tr>
 	    <td>{{device.room}}</td>
 	    <td>{{device.type}}</td>
 	    <td>{{device.state}}</td>
+	    <td>{{device.temp}}</td>
 	    <td>{{device.uptime}}</td>
+	    <td>
+		<a href="device/{{device.id}}">Device Info</a>
+	    </td>
 	</tr>
 	{% endfor %}
     {%else:%}
-	dvere
+	oops
     {% endif %}
 </table>
 {% endblock %}
