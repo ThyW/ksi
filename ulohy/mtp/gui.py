@@ -161,7 +161,8 @@ class Gui:
 
     def ask_filename(self) -> None:
         self.meme_file = filedialog.askopenfilename()
-        self.image.configure(text=os.path.split(self.meme_file)[1])
+        if self.meme_file:
+            self.image.configure(text=os.path.split(self.meme_file)[1])
 
     def popup(self, title: str, msg: str) -> None:
         messagebox.showinfo(title=title, message=msg)
