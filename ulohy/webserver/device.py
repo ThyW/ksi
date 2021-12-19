@@ -23,6 +23,7 @@ class DeviceData:
     notes: str
     actions: Dict[str, str]
 
+
 @dataclass_json
 @dataclass
 class DevicePowerData(DeviceData):

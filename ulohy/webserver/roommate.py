@@ -36,11 +36,12 @@ def save_roommate(r: Roommate) -> None:
     with open(f"{PATH}{str(r.id)}", "w") as f2:
         f2.write(r.to_json())
 
+
 def load_roommate(name: str) -> Optional[Roommate]:
     with open(USERS_FILE, "r") as uf:
         for each in uf.readlines():
             sp = each.split(':')
-            if sp[0] == name: 
+            if sp[0] == name:
                 fname = sp[1].strip()
                 with open(f"{PATH}{fname}", "r") as file:
                     return Roommate.from_json(file.read())

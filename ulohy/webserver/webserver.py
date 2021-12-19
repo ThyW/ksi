@@ -3,12 +3,13 @@
 from flask import Flask, render_template, session, request, redirect, url_for
 import requests
 import json
-from typing import List, Any, Dict, Tuple
+from typing import List, Any, Dict, Tuple, Union, Optional
 from datetime import datetime, time
 from dataclasses import dataclass
 
 import roommate as rm
 import devices as devs
+from devices import Device
 
 #  import all the necessary data classes.
 #  Roomate, Device, more to come
@@ -33,13 +34,15 @@ def index():
     error = session.get("error") or None
     info = session.get("info") or None
     template = render_template('home.html', user=user, error=error, info=info)
+    session.pop("error", None)
     return template
 
 
 @app.route('/overview')
 def overview():
     sync_devices()
-    return render_template('overview.html')
+    data = costs()
+    return render_template('overview.html', cost_data=data)
 
 
 @app.route('/map')
@@ -101,7 +104,7 @@ def logout():
 def buttons():
     if request.method == "GET":
         sync_devices()
-        if session["auth"] == "true":
+        if session.get("auth") == "true":
             available = devices_for(session["userdata"])
             return render_template('buttons.html', available=available)
         else:
@@ -205,7 +208,7 @@ def get_time(time: int) -> str:
     return "%d:%02d:%02d" % (hour, min, sec)
 
 
-def load_device(id: str, config=None) -> Any:
+def load_device(id: str, config=None) -> Optional[Device]:
     fname = f"{DEVS}{id}.json"
     if not config:
         with open(DEV_CONFIG, "r") as f:
@@ -226,7 +229,7 @@ def load_device(id: str, config=None) -> Any:
     return None
 
 
-def save_device(device: Any):
+def save_device(device: Device):
     with open(f"{DEVS}{device.id}.json", "w") as f:
         json.dump(device.to_json(), f)
 
@@ -248,7 +251,7 @@ def sync_devices():
                     json.dump(j, f2)
 
 
-def devices_for(user: rm.Roommate) -> Dict[str, Tuple[bool, Any]]:
+def devices_for(user: rm.Roommate) -> Dict[str, Tuple[bool, Device]]:
     with open(DEV_CONFIG, "r") as f:
         dct = json.load(f)
     available_rooms = []
@@ -294,11 +297,52 @@ def manage_lights(step: float, increase: bool):
                     if increase:
                         dev = devs.SmartLight.from_json(json.load(f2))
                         dev.color_temperature += int(step) if dev.color_temperature < 6500 else 0
-                        requests.post(f"{URL}device/{id}/color_temperature/{dev.color_temperature}")
+                        requests.get(f"{URL}device/{id}/color_temperature/{dev.color_temperature}")
                     else:
                         dev = devs.SmartLight.from_json(json.load(f2))
                         dev.color_temperature -= int(step) if dev.color_temperature > 2300 else 0
-                        requests.post(f"{URL}device/{id}/color_temperature/{dev.color_temperature}")
+                        requests.get(f"{URL}device/{id}/color_temperature/{dev.color_temperature}")
+
+
+def costs() -> Dict[str, float]:
+    ret = dict()
+    with open(DEV_CONFIG, "r") as f:
+        config = json.load(f)
+    devices = dict()
+    for room in config.keys():
+        switch_id = config[room]["switch_sensor"]
+        light_id = config[room]["smart_light"]
+        switch = load_device(switch_id)
+        light = load_device(light_id)
+        devices[room] = list()
+
+        devices[room].append(switch)
+        devices[room].append(light)
+    sum_all = 0
+    for each in devices.keys():
+        sum_all += sum([x.power_usage for x in devices[each]])
+    people = ["sob_karsob", "karlik", "zelvicka_julie", "los_karlos"]
+    sum_people = sum(x[z].power_usage for z in range(2) 
+                     for a, x in devices.items() if a in people)
+    for each in people:
+        energy = int(sum([x.power_usage for x in devices[each]]))
+        bill = energy / sum_people * 100
+        print(sum_all, energy)
+        ret[each] = round(bill, 2)
+
+    sorted_dict = dict(sorted(ret.items(), key=lambda x:x[1], reverse=True))
+    print(sorted_dict)
+    d = dict()
+
+    for key, value in sorted_dict.items():
+        key = key.replace("_", " ")
+        keys = key.split(" ")
+        key = ""
+        for each in keys:
+            key += " "
+            key += each.capitalize() 
+        d[key] = value
+    return d
 
 
 def main() -> None:
